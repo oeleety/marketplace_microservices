@@ -18,9 +18,11 @@
   </ItemGroup>
 
     <ItemGroup>
-        <Protobuf Include="Protos/*.proto" Type="Both">
-            <Generator>MSBuild:Compile</Generator>
-        </Protobuf>
+        <Protobuf Include="Protos/*.proto" Type="Both" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Protos\sd.proto" />
     </ItemGroup>
 
 </Project>
