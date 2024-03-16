@@ -29,10 +29,8 @@ namespace Ozon.Route256.Practice.OrdersService
             serviceCollection.AddEndpointsApiExplorer();
             serviceCollection.AddSwaggerGen();
             serviceCollection.AddGrpcReflection();
-
             serviceCollection.AddSingleton<IDbStore, DbStore>();
             serviceCollection.AddHostedService<SdConsumerHostedService>();
-
         }
 
         public void Configure(IApplicationBuilder applicationBuilder)

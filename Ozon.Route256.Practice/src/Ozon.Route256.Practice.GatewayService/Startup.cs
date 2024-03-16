@@ -1,4 +1,7 @@
-﻿using Ozon.Route256.Practice.OrdersService;
+﻿using Grpc.Core;
+using Grpc.Net.Client.Balancer;
+using Grpc.Net.Client.Configuration;
+using Ozon.Route256.Practice.OrdersService;
 
 namespace Ozon.Route256.Practice.GatewayService
 {
@@ -13,19 +16,29 @@ namespace Ozon.Route256.Practice.GatewayService
 
         public void ConfigureServices(IServiceCollection serviceCollection)
         {
+            var factory = new StaticResolverFactory(address => new[]
+{
+                 new BalancerAddress("orders-service-1", 5005),
+                 new BalancerAddress("orders-service-2", 5005)
+            });
+
             serviceCollection.AddControllers();
             serviceCollection.AddEndpointsApiExplorer();
             serviceCollection.AddSwaggerGen();
-            serviceCollection.AddGrpcClient<Orders.OrdersClient>(option =>
-            {
-                var url = _configuration.GetValue<string>("ROUTE256_ORDERS_ADDRESS");
-                if (string.IsNullOrEmpty(url))
-                {
-                    throw new ArgumentException("ROUTE256_ORDERS_ADDRESS variable is null or empty");
-                }
+            serviceCollection.AddSingleton<ResolverFactory>(factory);
 
-                option.Address = new Uri(url);
+            serviceCollection.AddGrpcClient<Orders.OrdersClient>(options =>
+            {
+                options.Address = new Uri("static:///orders-service");
+            }).ConfigureChannel(x =>
+            {
+                x.Credentials = ChannelCredentials.Insecure;
+                x.ServiceConfig = new ServiceConfig
+                {
+                    LoadBalancingConfigs = { new LoadBalancingConfig("round_robin") }
+                };
             });
+
             serviceCollection.AddGrpcClient<Customers.CustomersClient>(option =>
             {
                 var url = _configuration.GetValue<string>("ROUTE256_CUSTOMER_ADDRESS");
