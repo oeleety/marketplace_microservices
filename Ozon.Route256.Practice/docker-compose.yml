@@ -18,7 +18,7 @@ services:
           - "5082:5004"
         environment:
             "ROUTE256_ORDERS_ADDRESS": "http://orders-service-1:5005"
-            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:80"
+            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
             "ROUTE256_HTTP_PORT": "5004"
 
     orders-service-1:
@@ -38,11 +38,10 @@ services:
             dockerfile: Dockerfile
         container_name: orders-service-2
         ports:
-            - "5084:80"
+            - "5084:5006"
         environment:
           "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
-          "ROUTE256_GRPC_PORT": "5005"
-          "ROUTE256_HTTP_PORT": "5004"
+          "ROUTE256_GRPC_PORT": "5006"
 
     orders-service-db:
         image: postgres:latest
@@ -60,8 +59,13 @@ services:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/customer-service:latest
         container_name: customer-service
         ports:
-          - "5085:80"
-  
+          - "5085:5007"
+          - "5086:80"
+        environment:
+          "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
+          "ROUTE256_GRPC_PORT": "5007"
+          "ROUTE256_HTTP_PORT": "80"
+
     customer-service-db:
         image: postgres:latest
         container_name: customer-service-db

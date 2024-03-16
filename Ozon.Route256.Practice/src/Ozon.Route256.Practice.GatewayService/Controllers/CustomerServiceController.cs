@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Grpc.Core;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Ozon.Route256.Practice.GatewayService.Controllers
 {
@@ -18,9 +19,33 @@ namespace Ozon.Route256.Practice.GatewayService.Controllers
         }
 
         [HttpGet("customers")]
-        public IEnumerable<string> GetCustomers()
+        public async Task<IActionResult> GetCustomers()
         {
-            return new string[] { "value1", "value2" };
+            try
+            {
+                var response = await _client.GetCustomersAsync(new GetCustomersRequest());
+                _logger.LogInformation($"{nameof(GetCustomers)}. Got response from GRPC CustomerService. ");
+                return Ok(response);
+            }
+            catch (RpcException ex)
+            {
+                _logger.LogError($"{nameof(GetCustomers)}. " +
+                    $"Got exception from GRPC CustomerService. RpcException :  {ex.Status.StatusCode}, {ex}");
+                if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    _logger.LogError($"{nameof(GetCustomers)}. Got exception from GRPC CustomerService. RpcException:  {ex}");
+                    throw new NotImplementedException();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"{nameof(GetCustomers)}. Got exception from GRPC CustomerService. Exception:  {ex}");
+                throw new NotImplementedException();
+            }
         }
     }
 }

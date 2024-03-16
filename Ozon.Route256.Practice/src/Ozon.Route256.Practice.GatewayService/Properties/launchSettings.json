@@ -7,7 +7,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ROUTE256_ORDERS_ADDRESS": "http://localhost:5005",
-        "ROUTE256_CUSTOMER_ADDRESS": "http://localhost:5085",
+        "ROUTE256_CUSTOMER_ADDRESS": "http://localhost:5007",
         "ROUTE256_HTTP_PORT": "5004"
       },
       "dotnetRunMessages": true,
