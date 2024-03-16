@@ -40,7 +40,6 @@ namespace Ozon.Route256.Practice.OrdersService
             applicationBuilder.UseRouting();
             applicationBuilder.UseSwagger();
             applicationBuilder.UseSwaggerUI();
-            //applicationBuilder.UseHttpsRedirection();
             applicationBuilder.UseEndpoints(endpointRouteBuilder =>
             {
                 endpointRouteBuilder.MapGet("", () => "Hello World!");

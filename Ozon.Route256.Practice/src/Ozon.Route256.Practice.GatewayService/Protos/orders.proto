@@ -3,7 +3,6 @@ syntax = "proto3";
 option csharp_namespace = "Ozon.Route256.Practice.OrdersService";
 import "google/protobuf/timestamp.proto";
 
-
 service Orders
 {
   rpc CancelOrder(CancelOrderRequest) returns(CancelOrderResponse);

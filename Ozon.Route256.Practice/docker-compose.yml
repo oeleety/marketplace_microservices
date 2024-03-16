@@ -15,19 +15,22 @@ services:
             dockerfile: Dockerfile
         container_name: gateway-service
         ports:
-          - "5082:80"
-    
+          - "5082:5004"
+        environment:
+            "ROUTE256_ORDERS_ADDRESS": "http://orders-service-1:5005"
+            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:80"
+            "ROUTE256_HTTP_PORT": "5004"
+
     orders-service-1:
         build: 
             context: ./src/Ozon.Route256.Practice.OrdersService
             dockerfile: Dockerfile
         container_name: orders-service-1
         ports:
-            - "5083:80"
+            - "5083:5005"
         environment:
           "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
           "ROUTE256_GRPC_PORT": "5005"
-          "ROUTE256_HTTP_PORT": "5004"
     
     orders-service-2:
         build: 
