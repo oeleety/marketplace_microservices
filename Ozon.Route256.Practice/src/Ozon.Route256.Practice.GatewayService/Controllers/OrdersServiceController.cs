@@ -26,14 +26,12 @@ public class OrdersServiceController : ControllerBase
         try
         {
             var response = await _client.CancelOrderAsync(request);
-            _logger.LogInformation($"{nameof(CancelOrder)}. " +
-                $"Got response from GRPC OrdersService : success = {response.Success}");
+            _logger.LogInformation($"{nameof(CancelOrder)}. Got response from GRPC OrdersService : success = {response.Success}");
             return Ok(response);
         }
         catch(RpcException ex)
         {
-            _logger.LogError($"{nameof(CancelOrder)}. " +
-                $"Got exception from GRPC OrdersService :  {ex.Status.StatusCode}, {ex}");
+            _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService");
             if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
             {
                 return NotFound();
@@ -45,8 +43,7 @@ public class OrdersServiceController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{nameof(CancelOrder)}. " +
-                $"Got exception from GRPC OrdersService :  {ex}");
+            _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService.");
             throw new NotImplementedException();
         }
     }
@@ -57,14 +54,12 @@ public class OrdersServiceController : ControllerBase
         try
         {
             var response = await _client.GetOrderStatusAsync(new GetOrderStatusRequest { Id = id});
-            _logger.LogInformation($"{nameof(GetOrderStatus)}. " +
-                $"Got response from GRPC OrdersService : status = {response.Status}");
+            _logger.LogInformation($"{nameof(GetOrderStatus)}. Got response from GRPC OrdersService : status = {response.Status}");
             return Ok(response);
         }
         catch (RpcException ex)
         {
-            _logger.LogError($"{nameof(GetOrderStatus)}. " +
-                $"Got exception from GRPC OrdersService :  {ex.Status.StatusCode}, {ex}");
+            _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
             if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
             {
                 return NotFound();
@@ -76,8 +71,7 @@ public class OrdersServiceController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{nameof(GetOrderStatus)}. " +
-                $"Got exception from GRPC OrdersService :  {ex}");
+            _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
             throw new NotImplementedException();
         }
     }
@@ -89,14 +83,12 @@ public class OrdersServiceController : ControllerBase
         try
         {
             var response = await _client.GetOrdersAsync(request);
-            _logger.LogInformation($"{nameof(GetOrders)}. " +
-                $"Got response from GRPC OrdersService.");
+            _logger.LogInformation($"{nameof(GetOrders)}. Got response from GRPC OrdersService.");
             return Ok(response);
         }
         catch (RpcException ex)
         {
-            _logger.LogError($"{nameof(GetOrders)}. " +
-                $"Got exception from GRPC OrdersService :  {ex.Status.StatusCode}, {ex}");
+            _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
             if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
             {
                 return NotFound();
@@ -108,8 +100,7 @@ public class OrdersServiceController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{nameof(GetOrders)}. " +
-                $"Got exception from GRPC OrdersService :  {ex}");
+            _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
             throw new NotImplementedException();
         }
     }

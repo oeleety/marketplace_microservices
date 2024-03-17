@@ -29,21 +29,20 @@ public class CustomerServiceController : ControllerBase
         }
         catch (RpcException ex)
         {
-            _logger.LogError($"{nameof(GetCustomers)}. " +
-                $"Got exception from GRPC CustomerService. RpcException :  {ex.Status.StatusCode}, {ex}");
+            _logger.LogError(ex, $"{nameof(GetCustomers)}. Got exception from GRPC CustomerService.");
             if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
             {
                 return NotFound();
             }
             else
             {
-                _logger.LogError($"{nameof(GetCustomers)}. Got exception from GRPC CustomerService. RpcException:  {ex}");
+                _logger.LogError(ex, $"{nameof(GetCustomers)}. Got exception from GRPC CustomerService.");
                 throw new NotImplementedException();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"{nameof(GetCustomers)}. Got exception from GRPC CustomerService. Exception:  {ex}");
+            _logger.LogError(ex, $"{nameof(GetCustomers)}. Got exception from GRPC CustomerService.");
             throw new NotImplementedException();
         }
     }
