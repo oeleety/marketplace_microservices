@@ -2,6 +2,7 @@ syntax = "proto3";
 
 option csharp_namespace = "Ozon.Route256.Practice.OrdersService";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 service Orders
 {
@@ -19,7 +20,7 @@ message CancelOrderRequest {
 
 message CancelOrderResponse {
     bool success = 1;
-    optional string error = 2; // google.protobuf.StringValue error = 2; doesn't work somehow todo
+    google.protobuf.StringValue error = 2;
 }
 
 message GetOrderStatusRequest {
@@ -114,23 +115,23 @@ message Paginate {
 }
 
 enum OrderStatus {
-  created = 0;
-  sent_to_customer = 1;
-  delivered = 2;
-  lost = 3;
-  cancelled = 4;
+  CREATED = 0;
+  SENT_TO_CUSTOMER = 1;
+  DELIVERED = 2;
+  LOST = 3;
+  CANCELLED = 4;
 }
 
 enum OrderType {
-  web = 0;
-  api = 1;
-  mobile = 2;
+  WEB = 0;
+  API = 1;
+  MOBILE = 2;
 }
 
 enum Direction {
-  after = 0;
-  before = 1;
-  arounf = 2;
+  AFTER = 0;
+  BEFORE = 1;
+  AROUND = 2;
 }
 
 enum SortOrder {
@@ -139,6 +140,6 @@ enum SortOrder {
 }
 
 enum ValueOrder {
-  region = 0;
-  status = 1;
+  REGION = 0;
+  STATUS = 1;
 }
