@@ -51,7 +51,6 @@ namespace Ozon.Route256.Practice.GatewayService.Controllers
             }
         }
 
-
         [HttpGet("order/status/{id}")]
         public async Task<IActionResult> GetOrderStatus(int id)
         {

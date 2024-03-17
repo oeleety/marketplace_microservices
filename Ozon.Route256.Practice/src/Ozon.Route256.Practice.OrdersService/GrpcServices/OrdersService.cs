@@ -46,6 +46,5 @@ namespace Ozon.Route256.Practice.OrdersService.GrpcServices
         {
             return base.GetAggregatedOrdersByRegion(request, context);
         }
-
     }
 }

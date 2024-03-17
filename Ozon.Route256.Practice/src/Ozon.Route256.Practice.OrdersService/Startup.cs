@@ -1,49 +1,47 @@
 ﻿using Ozon.Route256.Practice.OrdersService.ClientBalancing;
 using Ozon.Route256.Practice.OrdersService.Infrastructure;
 
-namespace Ozon.Route256.Practice.OrdersService
+namespace Ozon.Route256.Practice.OrdersService;
+
+public sealed class Startup
 {
-    public sealed class Startup
+    private readonly IConfiguration _configuration;
+
+    public Startup(IConfiguration configuration)
     {
-        private readonly IConfiguration _configuration;
+        _configuration = configuration;
+    }
 
-        public Startup(IConfiguration configuration)
+    public void ConfigureServices(IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddGrpc(option => option.Interceptors.Add<LoggerInterceptor>());
+        serviceCollection.AddGrpcClient<SdService.SdServiceClient>(option =>
         {
-            _configuration = configuration;
-        }
-
-        public void ConfigureServices(IServiceCollection serviceCollection)
-        {
-            serviceCollection.AddGrpc(option => option.Interceptors.Add<LoggerInterceptor>());
-            serviceCollection.AddGrpcClient<SdService.SdServiceClient>(option =>
+            var url = _configuration.GetValue<string>("ROUTE256_SD_ADDRESS");
+            if (string.IsNullOrWhiteSpace(url))
             {
-                var url = _configuration.GetValue<string>("ROUTE256_SD_ADDRESS");
-                if (string.IsNullOrEmpty(url))
-                {
-                    throw new ArgumentException("ROUTE256_SD_ADDRESS variable is null or empty");
-                }
+                throw new ArgumentException("ROUTE256_SD_ADDRESS variable is null or empty");
+            }
 
-                option.Address = new Uri(url);
-            });
-            serviceCollection.AddControllers();
-            serviceCollection.AddEndpointsApiExplorer();
-            serviceCollection.AddSwaggerGen();
-            serviceCollection.AddGrpcReflection();
-            serviceCollection.AddSingleton<IDbStore, DbStore>();
-            serviceCollection.AddHostedService<SdConsumerHostedService>();
-        }
+            option.Address = new Uri(url);
+        });
+        serviceCollection.AddControllers();
+        serviceCollection.AddEndpointsApiExplorer();
+        serviceCollection.AddSwaggerGen();
+        serviceCollection.AddGrpcReflection();
+        serviceCollection.AddSingleton<IDbStore, DbStore>();
+        serviceCollection.AddHostedService<SdConsumerHostedService>();
+    }
 
-        public void Configure(IApplicationBuilder applicationBuilder)
+    public void Configure(IApplicationBuilder applicationBuilder)
+    {
+        applicationBuilder.UseRouting();
+        applicationBuilder.UseSwagger();
+        applicationBuilder.UseSwaggerUI();
+        applicationBuilder.UseEndpoints(endpointRouteBuilder =>
         {
-            applicationBuilder.UseRouting();
-            applicationBuilder.UseSwagger();
-            applicationBuilder.UseSwaggerUI();
-            applicationBuilder.UseEndpoints(endpointRouteBuilder =>
-            {
-                endpointRouteBuilder.MapGet("", () => "Hello World!");
-                endpointRouteBuilder.MapGrpcService<GrpcServices.OrdersService>();
-                endpointRouteBuilder.MapGrpcReflectionService();
-            });
-        }
+            endpointRouteBuilder.MapGrpcService<GrpcServices.OrdersService>();
+            endpointRouteBuilder.MapGrpcReflectionService();
+        });
     }
 }

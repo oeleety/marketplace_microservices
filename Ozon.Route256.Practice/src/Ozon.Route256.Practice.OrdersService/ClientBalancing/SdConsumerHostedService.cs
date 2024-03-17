@@ -5,7 +5,7 @@ namespace Ozon.Route256.Practice.OrdersService.ClientBalancing
 {
     public sealed class SdConsumerHostedService : BackgroundService
     {
-        private const int SD_TIME_TO_DELAY_MS = 1000;
+        private const int SdTimeToDelayMs = 1000;
 
         private readonly SdService.SdServiceClient _client;
         private readonly ILogger<SdConsumerHostedService> _logger;
@@ -52,7 +52,7 @@ namespace Ozon.Route256.Practice.OrdersService.ClientBalancing
                 catch (RpcException ex)
                 {
                     _logger.LogError(ex, "SD throw exception.");
-                    await Task.Delay(SD_TIME_TO_DELAY_MS, cancellationToken);
+                    await Task.Delay(SdTimeToDelayMs, cancellationToken);
                 }
             }
         }

@@ -17,11 +17,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="GrpcClients\" />
-  </ItemGroup>
-
     <ItemGroup>
         <Protobuf Include="Protos/*.proto" Type="Both" />
     </ItemGroup>
