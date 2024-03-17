@@ -1,5 +1,7 @@
 ﻿using Grpc.Core;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
+using System.Linq;
+
 
 namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
 
@@ -18,7 +20,7 @@ public sealed class OrdersService : Orders.OrdersBase
     {
         return Task.FromResult(new GetRegionsResponse
         {
-            Regions = {new List<Region>() }
+            Regions = { new List<Region>() }
         });
     }
 
@@ -44,6 +46,10 @@ public sealed class OrdersService : Orders.OrdersBase
 
     public override Task<GetAggregatedOrdersByRegionResponse> GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest request, ServerCallContext context)
     {
-        return base.GetAggregatedOrdersByRegion(request, context);
+        return Task.FromResult(new GetAggregatedOrdersByRegionResponse
+        {
+            Regions = { new List<Region>()},
+            StatByRegion = { new Dictionary<int, OrdersStat>()}
+        });
     }
 }
