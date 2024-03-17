@@ -2,48 +2,47 @@
 using Grpc.Core;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
 
-namespace Ozon.Route256.Practice.OrdersService.Infrastructure
+namespace Ozon.Route256.Practice.OrdersService.Infrastructure;
+
+internal sealed class LoggerInterceptor : Interceptor
 {
-    internal sealed class LoggerInterceptor : Interceptor
+    private readonly ILogger<LoggerInterceptor> _logger;
+
+    public LoggerInterceptor(ILogger<LoggerInterceptor> logger)
     {
-        private readonly ILogger<LoggerInterceptor> _logger;
+        _logger = logger;
+    }
 
-        public LoggerInterceptor(ILogger<LoggerInterceptor> logger)
+    public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
+        TRequest request,
+        ServerCallContext context,
+        UnaryServerMethod<TRequest,
+            TResponse> continuation)
+    {
+        _logger.LogInformation("Request {request}", request);
+
+        try
         {
-            _logger = logger;
+            var response = await base.UnaryServerHandler(request, context, continuation);
+
+            _logger.LogInformation("Response {response}", response);
+
+            return response;
         }
-
-        public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
-            TRequest request,
-            ServerCallContext context,
-            UnaryServerMethod<TRequest,
-                TResponse> continuation)
+        catch (RpcException ex)
         {
-            _logger.LogInformation("Request {request}", request);
-
-            try
-            {
-                var response = await base.UnaryServerHandler(request, context, continuation);
-
-                _logger.LogInformation("Response {response}", response);
-
-                return response;
-            }
-            catch (RpcException ex)
-            {
-                _logger.LogError(ex, "Some exception happened");
-                throw;
-            }
-            catch (NotFoundException ex)
-            {
-                _logger.LogError(ex, "Some exception happened");
-                throw new RpcException(new Status(StatusCode.NotFound, ex.Message));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Some exception happened");
-                throw new RpcException(new Status(StatusCode.Unknown, ex.Message));
-            }
+            _logger.LogError(ex, "Some exception happened");
+            throw;
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogError(ex, "Some exception happened");
+            throw new RpcException(new Status(StatusCode.NotFound, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Some exception happened");
+            throw new RpcException(new Status(StatusCode.Unknown, ex.Message));
         }
     }
 }

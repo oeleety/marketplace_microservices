@@ -1,50 +1,49 @@
 ﻿using Grpc.Core;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
 
-namespace Ozon.Route256.Practice.OrdersService.GrpcServices
+namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
+
+public sealed class OrdersService : Orders.OrdersBase
 {
-    public sealed class OrdersService : Orders.OrdersBase
+    public override Task<CancelOrderResponse> CancelOrder(CancelOrderRequest request, ServerCallContext context)
     {
-        public override Task<CancelOrderResponse> CancelOrder(CancelOrderRequest request, ServerCallContext context)
-        {
-            throw new NotFoundException($"Order with id = {request.Id} not found");
-        }
-        public override Task<GetOrderStatusResponse> GetOrderStatus(GetOrderStatusRequest request, ServerCallContext context)
-        {
-            throw new NotFoundException($"Order with id = {request.Id} not found");
-        }
+        throw new NotFoundException($"Order with id = {request.Id} not found");
+    }
+    public override Task<GetOrderStatusResponse> GetOrderStatus(GetOrderStatusRequest request, ServerCallContext context)
+    {
+        throw new NotFoundException($"Order with id = {request.Id} not found");
+    }
 
-        public override Task<GetRegionsResponse> GetRegions(GetRegionsRequest request, ServerCallContext context)
+    public override Task<GetRegionsResponse> GetRegions(GetRegionsRequest request, ServerCallContext context)
+    {
+        return Task.FromResult(new GetRegionsResponse
         {
-            return Task.FromResult(new GetRegionsResponse
-            {
-                Regions = {new List<Region>() }
-            });
-        }
+            Regions = {new List<Region>() }
+        });
+    }
 
-        public override Task<GetOrdersResponse> GetOrders(GetOrdersRequest request, ServerCallContext context)
+    public override Task<GetOrdersResponse> GetOrders(GetOrdersRequest request, ServerCallContext context)
+    {
+        return Task.FromResult(new GetOrdersResponse
         {
-            return Task.FromResult(new GetOrdersResponse
-            {
-                Orders = { new List<Order>() }
-            });
-        }
+            Orders = { new List<Order>() }
+        });
+    }
 
-        public override Task<GetOrdersByCustomerResponse> GetOrdersByCustomer(GetOrdersByCustomerRequest request, ServerCallContext context)
+    public override Task<GetOrdersByCustomerResponse> GetOrdersByCustomer(GetOrdersByCustomerRequest request, ServerCallContext context)
+    {
+        if (false)
         {
-            if (false)
-            {
-                throw new RpcException(new Status(StatusCode.InvalidArgument, $"Customer with id = {request.CustomerId} not found"));
-            }
-            return Task.FromResult(new GetOrdersByCustomerResponse
-            {
-                Orders = { new List<Order>() }
-            });
+            throw new RpcException(new Status(StatusCode.InvalidArgument, $"Customer with id = {request.CustomerId} not found"));
         }
+        return Task.FromResult(new GetOrdersByCustomerResponse
+        {
+            Orders = { new List<Order>() }
+        });
+    }
 
-        public override Task<GetAggregatedOrdersByRegionResponse> GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest request, ServerCallContext context)
-        {
-            return base.GetAggregatedOrdersByRegion(request, context);
-        }
+    public override Task<GetAggregatedOrdersByRegionResponse> GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest request, ServerCallContext context)
+    {
+        return base.GetAggregatedOrdersByRegion(request, context);
     }
 }

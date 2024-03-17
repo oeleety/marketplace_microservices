@@ -1,12 +1,11 @@
-﻿namespace Ozon.Route256.Practice.OrdersService.Exceptions
-{
-    public class NotFoundException : Exception
-    {
-        public override string Message { get; }
+﻿namespace Ozon.Route256.Practice.OrdersService.Exceptions;
 
-        public NotFoundException(string exceptionMessage)
-        {
-            Message = exceptionMessage;
-        }
+public class NotFoundException : Exception
+{
+    public override string Message { get; }
+
+    public NotFoundException(string exceptionMessage)
+    {
+        Message = exceptionMessage;
     }
 }
