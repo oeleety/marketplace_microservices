@@ -8,14 +8,14 @@ await Host
         .UseStartup<Startup>()
         .ConfigureKestrel(option =>
         {
-            option.ListenPortByOptions(ProgramExtension.ROUTE256_HTTP_PORT, HttpProtocols.Http1);
+            option.ListenPortByOptions(ProgramExtension.Route256HttpPort, HttpProtocols.Http1);
         }))
     .Build()
     .RunAsync();
 
-public static class ProgramExtension
+public static class ProgramExtension // todo extract to project in order to duplicate with the same code in gateway project
 {
-    public const string ROUTE256_HTTP_PORT = "ROUTE256_HTTP_PORT";
+    public const string Route256HttpPort = "ROUTE256_HTTP_PORT";
 
     public static void ListenPortByOptions(
         this KestrelServerOptions option,

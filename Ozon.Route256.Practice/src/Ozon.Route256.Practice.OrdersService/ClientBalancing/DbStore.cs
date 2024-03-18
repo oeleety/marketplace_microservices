@@ -7,7 +7,7 @@ public interface IDbStore
 
 public sealed class DbStore : IDbStore
 {
-    private const int START_INDEX = 0;
+    private const int StartIndex = 0;
 
     private DbEndpoint[] _endpoints = Array.Empty<DbEndpoint>();
 
@@ -15,7 +15,7 @@ public sealed class DbStore : IDbStore
     {
         _endpoints = new DbEndpoint[dbEndpoints.Count];
 
-        foreach (var (dbEndpoint, index) in dbEndpoints.Zip(Enumerable.Range(START_INDEX, dbEndpoints.Count)))
+        foreach (var (dbEndpoint, index) in dbEndpoints.Zip(Enumerable.Range(StartIndex, dbEndpoints.Count)))
         {
             _endpoints[index] = dbEndpoint;
         }

@@ -87,13 +87,13 @@ message Order {
 }
 
 message Address {
-  string region = 1;
-  string city = 2;
-  string street = 3;
-  string building = 4;
-  string apartment = 5;
-  double latitude = 6;
-  double longitude = 7;
+    string region = 1;
+    string city = 2;
+    string street = 3;
+    string building = 4;
+    string apartment = 5;
+    double latitude = 6;
+    double longitude = 7;
 }
 
 message Region {
@@ -115,31 +115,31 @@ message Paginate {
 }
 
 enum OrderStatus {
-  created = 0;
-  sent_to_customer = 1;
-  delivered = 2;
-  lost = 3;
-  cancelled = 4;
+    created = 0;
+    sent_to_customer = 1;
+    delivered = 2;
+    lost = 3;
+    cancelled = 4;
 }
 
 enum OrderType {
-  web = 0;
-  api = 1;
-  mobile = 2;
+    web = 0;
+    api = 1;
+    mobile = 2;
 }
 
 enum Direction {
-  after = 0;
-  before = 1;
-  arounf = 2;
+    after = 0;
+    before = 1;
+    arounf = 2;
 }
 
 enum SortOrder {
-  ASC = 0;
-  DESC = 1;
+    ASC = 0;
+    DESC = 1;
 }
 
 enum ValueOrder {
-  region = 0;
-  status = 1;
+    region = 0;
+    status = 1;
 }

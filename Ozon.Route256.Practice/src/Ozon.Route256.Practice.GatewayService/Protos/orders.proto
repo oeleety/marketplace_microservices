@@ -6,16 +6,16 @@ import "google/protobuf/wrappers.proto";
 
 service Orders
 {
-  rpc CancelOrder(CancelOrderRequest) returns(CancelOrderResponse);
-  rpc GetOrderStatus(GetOrderStatusRequest) returns(GetOrderStatusResponse);
-  rpc GetRegions(GetRegionsRequest) returns(GetRegionsResponse);
-  rpc GetOrders(GetOrdersRequest) returns(GetOrdersResponse);
-  rpc GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest) returns(GetAggregatedOrdersByRegionResponse);
-  rpc GetOrdersByCustomer(GetOrdersByCustomerRequest) returns(GetOrdersByCustomerResponse);
+    rpc CancelOrder(CancelOrderRequest) returns(CancelOrderResponse);
+    rpc GetOrderStatus(GetOrderStatusRequest) returns(GetOrderStatusResponse);
+    rpc GetRegions(GetRegionsRequest) returns(GetRegionsResponse);
+    rpc GetOrders(GetOrdersRequest) returns(GetOrdersResponse);
+    rpc GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest) returns(GetAggregatedOrdersByRegionResponse);
+    rpc GetOrdersByCustomer(GetOrdersByCustomerRequest) returns(GetOrdersByCustomerResponse);
 }
 
 message CancelOrderRequest {
-  int64 id = 1;
+    int64 id = 1;
 }
 
 message CancelOrderResponse {
@@ -28,7 +28,7 @@ message GetOrderStatusRequest {
 }
 
 message GetOrderStatusResponse {
-   OrderStatus status = 1;
+    OrderStatus status = 1;
 }
 
 message GetRegionsRequest {
@@ -64,7 +64,7 @@ message GetOrdersByCustomerRequest {
     int64 customer_Id = 1;
     google.protobuf.Timestamp since_timestamp = 2;
     Paginate paginate = 3;
-}
+    }
 
 message GetOrdersByCustomerResponse {
     repeated Order orders = 1;
@@ -87,13 +87,13 @@ message Order {
 }
 
 message Address {
-  string region = 1;
-  string city = 2;
-  string street = 3;
-  string building = 4;
-  string apartment = 5;
-  double latitude = 6;
-  double longitude = 7;
+    string region = 1;
+    string city = 2;
+    string street = 3;
+    string building = 4;
+    string apartment = 5;
+    double latitude = 6;
+    double longitude = 7;
 }
 
 message Region {
@@ -115,31 +115,31 @@ message Paginate {
 }
 
 enum OrderStatus {
-  CREATED = 0;
-  SENT_TO_CUSTOMER = 1;
-  DELIVERED = 2;
-  LOST = 3;
-  CANCELLED = 4;
+    CREATED = 0;
+    SENT_TO_CUSTOMER = 1;
+    DELIVERED = 2;
+    LOST = 3;
+    CANCELLED = 4;
 }
 
 enum OrderType {
-  WEB = 0;
-  API = 1;
-  MOBILE = 2;
+    WEB = 0;
+    API = 1;
+    MOBILE = 2;
 }
 
 enum Direction {
-  AFTER = 0;
-  BEFORE = 1;
-  AROUND = 2;
+    AFTER = 0;
+    BEFORE = 1;
+    AROUND = 2;
 }
 
 enum SortOrder {
-  ASC = 0;
-  DESC = 1;
+    ASC = 0;
+    DESC = 1;
 }
 
 enum ValueOrder {
-  REGION = 0;
-  STATUS = 1;
+    REGION = 0;
+    STATUS = 1;
 }

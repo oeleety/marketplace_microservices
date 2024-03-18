@@ -7,14 +7,14 @@ await Host
     .ConfigureWebHostDefaults(builder => builder.UseStartup<Startup>()
             .ConfigureKestrel(option =>
             {
-                option.ListenPortByOptions(ProgramExtension.ROUTE256_GRPC_PORT, HttpProtocols.Http2);
+                option.ListenPortByOptions(ProgramExtension.Route256GrpcPort, HttpProtocols.Http2);
             }))
     .Build()
     .RunAsync();
 
-public static class ProgramExtension
+public static class ProgramExtension// todo extract to project in order to duplicate with the same code in orders project
 {
-    public const string ROUTE256_GRPC_PORT = "ROUTE256_GRPC_PORT";
+    public const string Route256GrpcPort = "ROUTE256_GRPC_PORT";
 
     public static void ListenPortByOptions(
         this KestrelServerOptions option,
