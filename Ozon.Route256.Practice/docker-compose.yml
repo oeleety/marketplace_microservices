@@ -15,15 +15,21 @@ services:
             dockerfile: Dockerfile
         container_name: gateway-service
         ports:
-          - "5082:80"
-    
+          - "5082:5004"
+        environment:
+            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
+            "ROUTE256_HTTP_PORT": "5004"
+
     orders-service-1:
         build: 
             context: ./src/Ozon.Route256.Practice.OrdersService
             dockerfile: Dockerfile
         container_name: orders-service-1
         ports:
-            - "5083:80"
+            - "5083:5005"
+        environment:
+          "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
+          "ROUTE256_GRPC_PORT": "5005"
     
     orders-service-2:
         build: 
@@ -31,8 +37,11 @@ services:
             dockerfile: Dockerfile
         container_name: orders-service-2
         ports:
-            - "5084:80"
-    
+            - "5084:5006"
+        environment:
+          "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
+          "ROUTE256_GRPC_PORT": "5006"
+
     orders-service-db:
         image: postgres:latest
         container_name: orders-service-db
@@ -49,8 +58,13 @@ services:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/customer-service:latest
         container_name: customer-service
         ports:
-          - "5085:80"
-  
+          - "5085:5007"
+          - "5086:80"
+        environment:
+          "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
+          "ROUTE256_GRPC_PORT": "5007"
+          "ROUTE256_HTTP_PORT": "80"
+
     customer-service-db:
         image: postgres:latest
         container_name: customer-service-db
@@ -90,10 +104,12 @@ services:
     service-discovery:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/service-discovery:latest
         container_name: service-discovery
+        ports:
+            - "6081:80"
         environment:
             - ROUTE256_DB_STATE=cluster:0-9:db1:1543;cluster:10-19:db2:1543;cluster1:0:db3:1543
             - ROUTE256_UPDATE_TIMEOUT=10
-        
+
     logistics-simulator:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/logistics-simulator:latest
         container_name: logistics-simulator

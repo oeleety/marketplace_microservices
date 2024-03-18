@@ -1,40 +1,31 @@
-var builder = WebApplication.CreateBuilder(args);
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using System.Net;
+using Ozon.Route256.Practice.OrdersService;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+await Host
+    .CreateDefaultBuilder(args)
+    .ConfigureWebHostDefaults(builder => builder.UseStartup<Startup>()
+            .ConfigureKestrel(option =>
+            {
+                option.ListenPortByOptions(ProgramExtension.Route256GrpcPort, HttpProtocols.Http2);
+            }))
+    .Build()
+    .RunAsync();
 
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
+public static class ProgramExtension// todo extract to project in order to duplicate with the same code in orders project
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    public const string Route256GrpcPort = "ROUTE256_GRPC_PORT";
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateTime.Now.AddDays(index),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    public static void ListenPortByOptions(
+        this KestrelServerOptions option,
+        string envOption,
+        HttpProtocols httpProtocol)
+    {
+        var isHttpPortParsed = int.TryParse(Environment.GetEnvironmentVariable(envOption), out var httpPort);
 
-app.Run();
-
-internal record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        if (isHttpPortParsed)
+        {
+            option.Listen(IPAddress.Any, httpPort, options => options.Protocols = httpProtocol);
+        }
+    }
 }

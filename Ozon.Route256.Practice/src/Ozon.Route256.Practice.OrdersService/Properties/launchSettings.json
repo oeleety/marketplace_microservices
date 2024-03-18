@@ -5,10 +5,12 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ROUTE256_SD_ADDRESS": "http://localhost:6081",
+        "ROUTE256_GRPC_PORT": "5005"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "https://localhost:7076;http://localhost:5067"
+      "applicationUrl": "http://localhost:5067"
     },
     "IIS Express": {
       "commandName": "IISExpress",
