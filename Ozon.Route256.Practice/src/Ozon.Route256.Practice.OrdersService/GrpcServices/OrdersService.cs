@@ -3,6 +3,7 @@ using Grpc.Core;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
+using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
@@ -10,16 +11,26 @@ namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
 public sealed class OrdersService : Orders.OrdersBase
 {
     private readonly IOrdersRepository _repository;
+    private readonly LogisticsSimulatorClient _logisticsService;
 
-    public OrdersService(IOrdersRepository repository)
+    public OrdersService(
+        IOrdersRepository repository,
+        LogisticsSimulatorClient logisticsService)
     {
         _repository = repository;
+        _logisticsService = logisticsService;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
         CancelOrderRequest request, 
         ServerCallContext context)
     {
+        // todo check existance and status in current service beforehand.
+        var cancelResult = await _logisticsService.CancelOrderAsync(request.Id);
+        if(cancelResult is null || cancelResult.Success )
+        {
+            throw new UnprocessableException($"Cannot cancel order with id={request.Id}");
+        }
         await _repository.CancelOrderAsync(request.Id, context.CancellationToken);
         return new CancelOrderResponse
         {

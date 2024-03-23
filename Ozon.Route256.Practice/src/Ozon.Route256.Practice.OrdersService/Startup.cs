@@ -1,5 +1,8 @@
 ﻿using Ozon.Route256.Practice.OrdersService.ClientBalancing;
+using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure;
+using Ozon.Route256.Practice.LogisticsSimulator.Grpc;
+using Ozon.Route256.Practice.OrdersService.GrpcClients;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -25,10 +28,23 @@ public sealed class Startup
 
             option.Address = new Uri(url);
         });
+        serviceCollection.AddGrpcClient<LogisticsSimulatorService.LogisticsSimulatorServiceClient>(option =>
+        {
+            var url = _configuration.GetValue<string>("ROUTE256_LS_ADDRESS");
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                throw new ArgumentException("ROUTE256_LS_ADDRESS variable is null or empty");
+            }
+
+            option.Address = new Uri(url);
+        });
+        serviceCollection.AddSingleton<LogisticsSimulatorClient>();
         serviceCollection.AddControllers();
         serviceCollection.AddEndpointsApiExplorer();
         serviceCollection.AddSwaggerGen();
         serviceCollection.AddGrpcReflection();
+        serviceCollection.AddScoped<IOrdersRepository, OrdersRepository>();
+
         serviceCollection.AddSingleton<IDbStore, DbStore>();
         serviceCollection.AddHostedService<SdConsumerHostedService>();
     }

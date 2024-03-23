@@ -26,13 +26,11 @@ public sealed class Startup
         serviceCollection.AddControllers().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            //options.JsonSerializerOptions.IgnoreNullValues = true;
         });
         ;
         serviceCollection.AddEndpointsApiExplorer();
         serviceCollection.AddSwaggerGen();
         serviceCollection.AddSingleton<ResolverFactory>(factory);
-
         serviceCollection.AddGrpcClient<Orders.OrdersClient>(options =>
         {
             options.Address = new Uri("static:///orders-service");
