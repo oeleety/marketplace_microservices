@@ -1,7 +1,8 @@
-﻿using Grpc.Core;
+﻿using System.Text.Json.Serialization;
+using Grpc.Core;
 using Grpc.Net.Client.Balancer;
 using Grpc.Net.Client.Configuration;
-using Ozon.Route256.Practice.OrdersService;
+using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.GatewayService;
 
@@ -22,7 +23,12 @@ public sealed class Startup
              new BalancerAddress("orders-service-2", 5005)
         });
 
-        serviceCollection.AddControllers();
+        serviceCollection.AddControllers().AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            //options.JsonSerializerOptions.IgnoreNullValues = true;
+        });
+        ;
         serviceCollection.AddEndpointsApiExplorer();
         serviceCollection.AddSwaggerGen();
         serviceCollection.AddSingleton<ResolverFactory>(factory);

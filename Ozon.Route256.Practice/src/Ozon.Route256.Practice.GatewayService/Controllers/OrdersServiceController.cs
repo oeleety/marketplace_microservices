@@ -1,6 +1,6 @@
 ﻿using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
-using Ozon.Route256.Practice.OrdersService;
+using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.GatewayService.Controllers;
 
@@ -32,20 +32,20 @@ public class OrdersServiceController : ControllerBase
         catch(RpcException ex)
         {
             _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
+            return ex.Status.StatusCode switch
             {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(new CancelOrderResponse { Success = false, Error = ex.Status.Detail} ),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };// todo? 
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService.");
-            throw new NotImplementedException();
-        }
+            throw new Exception("An error occurred on the server.");
+        }// todo fix duplication(register controller with errorhandler?)
     }
 
     [HttpGet("order/status/{id}")]
@@ -60,19 +60,19 @@ public class OrdersServiceController : ControllerBase
         catch (RpcException ex)
         {
             _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
+            return ex.Status.StatusCode switch
             {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };// todo fix duplication(register controller with errorhandler?)
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
-            throw new NotImplementedException();
+            throw new Exception("An error occurred on the server.");
         }
     }
 
@@ -89,19 +89,19 @@ public class OrdersServiceController : ControllerBase
         catch (RpcException ex)
         {
             _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
+            return ex.Status.StatusCode switch
             {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
-            throw new NotImplementedException();
+            throw new Exception("An error occurred on the server.");
         }
     }
 
@@ -109,18 +109,51 @@ public class OrdersServiceController : ControllerBase
     public async Task<IActionResult> GetOrdersByCustomer(
         [FromBody] GetOrdersByCustomerRequest request)
     {
-        var response = await _client.GetOrdersByCustomerAsync(request);
-        _logger.LogInformation($"{nameof(GetOrdersByCustomer)}. Got response from GRPC OrdersService.");
-        return Ok(response);
+        try
+        {
+            var response = await _client.GetOrdersByCustomerAsync(request);
+            _logger.LogInformation($"{nameof(GetOrdersByCustomer)}. Got response from GRPC OrdersService.");
+            return Ok(response);
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, $"{nameof(GetOrdersByCustomer)}. Got exception from GRPC OrdersService");
+            return ex.Status.StatusCode switch
+            {
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.InvalidArgument => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };
+        }
     }
 
     [HttpPost("regions/list")]
     public async Task<IActionResult> GetRegions(
         [FromBody] GetRegionsRequest request)
     {
-        var response = await _client.GetRegionsAsync(request);
-        _logger.LogInformation($"{nameof(GetRegions)}. Got response from GRPC OrdersService.");
-        return Ok(response);
+        try
+        {
+            var response = await _client.GetRegionsAsync(request);
+            _logger.LogInformation($"{nameof(GetRegions)}. Got response from GRPC OrdersService.");
+            return Ok(response);
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, $"{nameof(GetRegions)}. Got exception from GRPC OrdersService");
+            return ex.Status.StatusCode switch
+            {
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };
+        }
     }
 
     [HttpPost("orders/list/aggregate/by-region")]
@@ -135,7 +168,16 @@ public class OrdersServiceController : ControllerBase
         }
         catch (RpcException ex)
         {
-            throw new NotImplementedException();
+            _logger.LogError(ex, $"{nameof(GetAggregatedOrdersByRegion)}. Got exception from GRPC OrdersService");
+            return ex.Status.StatusCode switch
+            {
+                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
+                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
+                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
+
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };
         }
     }
 }
