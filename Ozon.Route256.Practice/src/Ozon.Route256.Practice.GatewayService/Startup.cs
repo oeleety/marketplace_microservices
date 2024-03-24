@@ -4,6 +4,7 @@ using Grpc.Net.Client.Balancer;
 using Grpc.Net.Client.Configuration;
 using Ozon.Route256.Practice.GatewayService.Middleware;
 using Ozon.Route256.Practice.OrdersService.Proto;
+using Ozon.Route256.Practice.Shared;
 
 namespace Ozon.Route256.Practice.GatewayService;
 
@@ -28,7 +29,6 @@ public sealed class Startup
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
-        ;
         serviceCollection.AddEndpointsApiExplorer();
         serviceCollection.AddSwaggerGen();
         serviceCollection.AddSingleton<ResolverFactory>(factory);
@@ -46,13 +46,7 @@ public sealed class Startup
 
         serviceCollection.AddGrpcClient<Customers.CustomersClient>(option =>
         {
-            var url = _configuration.GetValue<string>("ROUTE256_CUSTOMER_ADDRESS");
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("ROUTE256_CUSTOMER_ADDRESS variable is null or empty");
-            }
-
-            option.Address = new Uri(url);
+            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_CUSTOMER_ADDRESS"));
         });
     }
 

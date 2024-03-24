@@ -1,6 +1,6 @@
-using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Ozon.Route256.Practice.GatewayService;
+using Ozon.Route256.Practice.Shared;
 
 await Host
     .CreateDefaultBuilder(args)
@@ -8,25 +8,7 @@ await Host
         .UseStartup<Startup>()
         .ConfigureKestrel(option =>
         {
-            option.ListenPortByOptions(ProgramExtension.Route256HttpPort, HttpProtocols.Http1);
+            option.ListenPortByOptions("ROUTE256_HTTP_PORT", HttpProtocols.Http1);
         }))
     .Build()
     .RunAsync();
-
-public static class ProgramExtension // todo extract to project in order to duplicate with the same code in gateway project
-{
-    public const string Route256HttpPort = "ROUTE256_HTTP_PORT";
-
-    public static void ListenPortByOptions(
-        this KestrelServerOptions option,
-        string envOption,
-        HttpProtocols httpProtocol)
-    {
-        var isHttpPortParsed = int.TryParse(Environment.GetEnvironmentVariable(envOption), out var httpPort);
-
-        if (isHttpPortParsed)
-        {
-            option.Listen(IPAddress.Any, httpPort, options => options.Protocols = httpProtocol);
-        }
-    }
-}

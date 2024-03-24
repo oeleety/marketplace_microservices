@@ -3,6 +3,7 @@ using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure;
 using Ozon.Route256.Practice.LogisticsSimulator.Grpc;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
+using Ozon.Route256.Practice.Shared;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -20,23 +21,11 @@ public sealed class Startup
         serviceCollection.AddGrpc(option => option.Interceptors.Add<LoggerInterceptor>());
         serviceCollection.AddGrpcClient<SdService.SdServiceClient>(option =>
         {
-            var url = _configuration.GetValue<string>("ROUTE256_SD_ADDRESS");
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("ROUTE256_SD_ADDRESS variable is null or empty");
-            }
-
-            option.Address = new Uri(url);
+            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_SD_ADDRESS"));
         });
         serviceCollection.AddGrpcClient<LogisticsSimulatorService.LogisticsSimulatorServiceClient>(option =>
         {
-            var url = _configuration.GetValue<string>("ROUTE256_LS_ADDRESS");
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("ROUTE256_LS_ADDRESS variable is null or empty");
-            }
-
-            option.Address = new Uri(url);
+            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_LS_ADDRESS"));
         });
         serviceCollection.AddSingleton<LogisticsSimulatorClient>();
         serviceCollection.AddControllers();
