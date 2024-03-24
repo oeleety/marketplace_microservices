@@ -27,7 +27,7 @@ public sealed class OrdersService : Orders.OrdersBase
     {
         // todo check existance and status in current service beforehand.
         var cancelResult = await _logisticsService.CancelOrderAsync(request.Id);
-        if(cancelResult is null || cancelResult.Success )
+        if(cancelResult is null || cancelResult.Success)
         {
             throw new UnprocessableException($"Cannot cancel order with id={request.Id}");
         }
@@ -78,7 +78,7 @@ public sealed class OrdersService : Orders.OrdersBase
         GetOrdersByCustomerRequest request, 
         ServerCallContext context)
     {
-        HashSet<long> customers = new() { 1, 2, 3, 4, 5, 95, 96, 98, 99, 100}; // todo check in customerService?
+        HashSet<long> customers = new() { 1, 2, 3, 4, 5, 95, 96, 98, 99, 100 }; // todo check in customerService?
 
         if (!customers.TryGetValue(request.CustomerId, out var value))
         {

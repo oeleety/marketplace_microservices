@@ -1,5 +1,4 @@
-﻿using Grpc.Core;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace Ozon.Route256.Practice.GatewayService.Controllers;
 
@@ -21,23 +20,8 @@ public class CustomerServiceController : ControllerBase
     [HttpGet("customers")]
     public async Task<IActionResult> GetCustomers()
     {
-        try
-        {
-            var response = await _client.GetCustomersAsync(new GetCustomersRequest());
-            _logger.LogInformation($"{nameof(GetCustomers)}. Got response from GRPC CustomerService. ");
-            return Ok(response);
-        }
-        catch (RpcException ex)
-        {
-            _logger.LogError(ex, $"{nameof(GetCustomers)}. Got exception from GRPC CustomerService.");
-            return ex.Status.StatusCode switch
-            {
-                Grpc.Core.StatusCode.NotFound => NotFound(ex.Status.Detail),
-                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(ex.Status.Detail),
-                Grpc.Core.StatusCode.Cancelled => StatusCode(StatusCodes.Status408RequestTimeout, new { message = ex.Status.Detail }),
-                Grpc.Core.StatusCode.Unknown => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail }),
-                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
-            };
-        }
+        var response = await _client.GetCustomersAsync(new GetCustomersRequest());
+        _logger.LogInformation($"{nameof(GetCustomers)}. Got response from GRPC CustomerService. ");
+        return Ok(response);
     }
 }

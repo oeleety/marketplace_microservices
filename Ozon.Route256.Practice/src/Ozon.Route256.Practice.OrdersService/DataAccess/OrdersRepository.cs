@@ -7,9 +7,9 @@ namespace Ozon.Route256.Practice.OrdersService.DataAccess;
 
 internal class OrdersRepository : IOrdersRepository
 {
-    private static readonly ConcurrentDictionary<int, RegionEntity> Regions = new();
-    private static readonly ConcurrentDictionary<long, OrderEntity> Orders = new();
-    private static readonly HashSet<OrderStatusEntity> ForbiddenToCancelStatus = new()
+    private static readonly ConcurrentDictionary<int, RegionEntity> _regions = new();
+    private static readonly ConcurrentDictionary<long, OrderEntity> _orders = new();
+    private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
         OrderStatusEntity.Cancelled,
         OrderStatusEntity.Delivered
@@ -20,11 +20,11 @@ internal class OrdersRepository : IOrdersRepository
         var moscow = new RegionEntity(1, "Moscow");
         var novosibirsk = new RegionEntity(2, "Novosibirsk");
         var spb = new RegionEntity(3, "StPetersburg");
-        Regions.TryAdd(moscow.Id, moscow);
-        Regions.TryAdd(novosibirsk.Id, novosibirsk);
-        Regions.TryAdd(spb.Id, spb);
+        _regions.TryAdd(moscow.Id, moscow);
+        _regions.TryAdd(novosibirsk.Id, novosibirsk);
+        _regions.TryAdd(spb.Id, spb);
 
-        var date = DateTime.ParseExact("2023-11-01 14:40:52,531", "yyyy-MM-dd HH:mm:ss,fff", System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime(); // "seconds": "1698838852",
+        var date = DateTime.ParseExact("2023-11-01 14:40:52,531", "yyyy-MM-dd HH:mm:ss,fff", System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
         var order1 = new OrderEntity(1, OrderStatusEntity.Created, OrderTypeEntity.Api, CustomerId: 1, 
             "Oks Mush", "89771451326", new AddressEntity("Moscow", "Zelenograd", "empty", "901", "81", 23d, 23d), 1, 1000, 1, 
             date, moscow);
@@ -32,11 +32,11 @@ internal class OrdersRepository : IOrdersRepository
         var order3 = order1 with { Id = 3, OrderStatus = OrderStatusEntity.Delivered, OrderType = OrderTypeEntity.Mobile, Created = date.AddDays(5), CustomerId = 2};
         var order4 = order1 with { Id = 4, OrderStatus = OrderStatusEntity.Lost, Created = date.AddDays(-5), CreatedRegion = novosibirsk };
         var order5 = order1 with { Id = 5, OrderStatus = OrderStatusEntity.Cancelled, Created = DateTime.UtcNow.AddDays(-2), CreatedRegion = spb };
-        Orders.TryAdd(order1.Id, order1);
-        Orders.TryAdd(order2.Id, order2);
-        Orders.TryAdd(order3.Id, order3);
-        Orders.TryAdd(order4.Id, order4);
-        Orders.TryAdd(order5.Id, order5);
+        _orders.TryAdd(order1.Id, order1);
+        _orders.TryAdd(order2.Id, order2);
+        _orders.TryAdd(order3.Id, order3);
+        _orders.TryAdd(order4.Id, order4);
+        _orders.TryAdd(order5.Id, order5);
     }
 
     public async Task CancelOrderAsync(long id, CancellationToken token = default)
@@ -44,7 +44,7 @@ internal class OrdersRepository : IOrdersRepository
         token.ThrowIfCancellationRequested();
 
         var order = await FindOrder(id, token);
-        if (ForbiddenToCancelStatus.Contains(order.OrderStatus))
+        if (_forbiddenToCancelStatus.Contains(order.OrderStatus))
         {
             throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
         }
@@ -54,7 +54,7 @@ internal class OrdersRepository : IOrdersRepository
 
             token.ThrowIfCancellationRequested();
 
-            Orders[order.Id] = updatedOrder;
+            _orders[order.Id] = updatedOrder;
         }
     }
 
@@ -70,7 +70,7 @@ internal class OrdersRepository : IOrdersRepository
     {
         token.ThrowIfCancellationRequested();
 
-        return Task.FromResult(Regions.Values.ToArray());
+        return Task.FromResult(_regions.Values.ToArray());
     }
 
     public Task<OrderEntity[]> GetOrders(
@@ -86,7 +86,7 @@ internal class OrdersRepository : IOrdersRepository
         CheckExistance(reqRegions);
 
         var reqRegionsIds = reqRegions.Select(r => r.Id);
-        var orders = Orders.Where(o => reqRegionsIds.Contains(o.Value.CreatedRegion.Id)
+        var orders = _orders.Where(o => reqRegionsIds.Contains(o.Value.CreatedRegion.Id)
             && o.Value.OrderType == orderType).Select(o => o.Value);
         
         token.ThrowIfCancellationRequested();
@@ -104,7 +104,7 @@ internal class OrdersRepository : IOrdersRepository
     {
         token.ThrowIfCancellationRequested(); 
 
-        var orders = Orders
+        var orders = _orders
            .Where(o => o.Value.CustomerId == customerId && o.Value.Created >= sinceTimestamp)
            .Select(o => o.Value);
         orders = Paginate(orders, pagination);
@@ -120,7 +120,7 @@ internal class OrdersRepository : IOrdersRepository
     {
         token.ThrowIfCancellationRequested();
 
-        var orders = Orders
+        var orders = _orders
             .Where(o => o.Value.Created > sinceTimestamp);
         if (reqRegions.Any())
         {
@@ -152,7 +152,7 @@ internal class OrdersRepository : IOrdersRepository
     {
         token.ThrowIfCancellationRequested();
 
-        return Orders.TryGetValue(id, out var order)
+        return _orders.TryGetValue(id, out var order)
             ? Task.FromResult(order)
             : Task.FromException<OrderEntity>(new NotFoundException($"Order with id={id} not found"));
     }
@@ -160,7 +160,7 @@ internal class OrdersRepository : IOrdersRepository
     private static bool CheckExistance(
         RegionEntity[] reqRegions)
     {
-        bool isSubset = reqRegions.All(elem => Regions.ContainsKey(elem.Id));
+        bool isSubset = reqRegions.All(elem => _regions.ContainsKey(elem.Id));
         if (!isSubset)
         {
             throw new NotFoundException("At least one region from the request is not presented in the service.");

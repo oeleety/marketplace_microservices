@@ -15,9 +15,9 @@ public sealed class LogisticsSimulatorClient
         _logger = logger;
     }
 
-    public async Task<CancelResult> CancelOrderAsync(long id )
+    public async Task<CancelResult> CancelOrderAsync(long id)
     {
-        var response = await _client.OrderCancelAsync(new Order { Id = id});
+        var response = await _client.OrderCancelAsync(new Order { Id = id });
         return response;
     }
 }

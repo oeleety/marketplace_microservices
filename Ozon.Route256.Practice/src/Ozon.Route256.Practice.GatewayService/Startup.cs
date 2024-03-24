@@ -2,6 +2,7 @@
 using Grpc.Core;
 using Grpc.Net.Client.Balancer;
 using Grpc.Net.Client.Configuration;
+using Ozon.Route256.Practice.GatewayService.Middleware;
 using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.GatewayService;
@@ -57,6 +58,7 @@ public sealed class Startup
 
     public void Configure(IApplicationBuilder applicationBuilder)
     {
+        applicationBuilder.UseMiddleware<ExceptionHandler>();
         applicationBuilder.UseRouting();
         applicationBuilder.UseSwagger();
         applicationBuilder.UseSwaggerUI();
