@@ -41,21 +41,10 @@ internal class OrdersRepository : IOrdersRepository
 
     public async Task CancelOrderAsync(long id, CancellationToken token = default)
     {
+        var order = await ThrowIfCancelProhibitedAsync(id);
+        var updatedOrder = order with { OrderStatus = OrderStatusEntity.Cancelled };
         token.ThrowIfCancellationRequested();
-
-        var order = await FindOrder(id, token);
-        if (_forbiddenToCancelStatus.Contains(order.OrderStatus))
-        {
-            throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
-        }
-        else
-        {
-            var updatedOrder = order with { OrderStatus = OrderStatusEntity.Cancelled };
-
-            token.ThrowIfCancellationRequested();
-
-            _orders[order.Id] = updatedOrder;
-        }
+        _orders[order.Id] = updatedOrder;
     }
 
     public async Task<OrderStatusEntity> GetOrderStatusAsync(long id, CancellationToken token = default)
@@ -144,6 +133,18 @@ internal class OrdersRepository : IOrdersRepository
         }
 
         return Task.FromResult(result);
+    }
+
+    public async Task<OrderEntity> ThrowIfCancelProhibitedAsync(long id, CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested();
+
+        var order = await FindOrder(id, token);
+        if (_forbiddenToCancelStatus.Contains(order.OrderStatus))
+        {
+            throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
+        }
+        return order;
     }
 
     private static Task<OrderEntity> FindOrder(

@@ -6,6 +6,8 @@ public interface IOrdersRepository
 {
     Task CancelOrderAsync(long id, CancellationToken token = default);
 
+    Task<OrderEntity> ThrowIfCancelProhibitedAsync(long id, CancellationToken token = default);
+
     Task<OrderStatusEntity> GetOrderStatusAsync(long id, CancellationToken token = default);
 
     Task<RegionEntity[]> GetRegions(CancellationToken token = default);

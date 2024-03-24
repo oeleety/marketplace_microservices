@@ -25,7 +25,7 @@ public sealed class OrdersService : Orders.OrdersBase
         CancelOrderRequest request, 
         ServerCallContext context)
     {
-        // todo check existance and status in current service beforehand.
+        await _repository.ThrowIfCancelProhibitedAsync(request.Id, context.CancellationToken);
         var cancelResult = await _logisticsService.CancelOrderAsync(request.Id);
         if(cancelResult is null || cancelResult.Success)
         {
