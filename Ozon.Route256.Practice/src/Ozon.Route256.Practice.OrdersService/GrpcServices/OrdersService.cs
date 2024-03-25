@@ -12,13 +12,16 @@ public sealed class OrdersService : Orders.OrdersBase
 {
     private readonly IOrdersRepository _repository;
     private readonly LogisticsSimulatorClient _logisticsService;
+    private readonly CustomersServiceClient _customersService;
 
     public OrdersService(
         IOrdersRepository repository,
-        LogisticsSimulatorClient logisticsService)
+        LogisticsSimulatorClient logisticsService,
+        CustomersServiceClient customersService)
     {
         _repository = repository;
         _logisticsService = logisticsService;
+        _customersService = customersService;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
@@ -78,12 +81,15 @@ public sealed class OrdersService : Orders.OrdersBase
         GetOrdersByCustomerRequest request, 
         ServerCallContext context)
     {
-        HashSet<long> customers = new() { 1, 2, 3, 4, 5, 95, 96, 98, 99, 100 }; // todo check in customerService?
-
-        if (!customers.TryGetValue(request.CustomerId, out var value))
+        try
         {
-            throw new InvalidArgumentException($"Customer with id = {request.CustomerId} not found");
+            var customer = await _customersService.GetCustomerByIdAsync(request.CustomerId);
         }
+        catch (RpcException ex) when (ex.Status.StatusCode == StatusCode.NotFound)
+        {
+            throw new InvalidArgumentException(ex.Status.Detail);
+        }
+
         var orders = await _repository.GetOrdersByCustomer(
             request.CustomerId, 
             request.SinceTimestamp.ToDateTime(), 

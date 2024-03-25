@@ -4,7 +4,7 @@ public record OrderEntity(
     long Id, 
     OrderStatusEntity OrderStatus, 
     OrderTypeEntity OrderType, 
-    long CustomerId, 
+    int CustomerId, 
     string CustomerFullName, 
     string CustomerMobileNumber,
     AddressEntity DeliveryAddress, 

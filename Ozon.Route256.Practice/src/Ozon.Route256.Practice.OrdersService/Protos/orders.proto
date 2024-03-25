@@ -60,7 +60,7 @@ message GetAggregatedOrdersByRegionResponse {
 }
 
 message GetOrdersByCustomerRequest {
-    int64 customer_Id = 1;
+    int32 customer_Id = 1;
     google.protobuf.Timestamp since_timestamp = 2;
     Pagination pagination = 3;
 }
@@ -74,7 +74,7 @@ message Order {
     int64 id = 1;
     OrderStatus status = 2;
     OrderType type = 3;
-    int64 customer_Id = 4;
+    int32 customer_Id = 4;
     string customer_full_name = 5;
     string customer_mobile_number = 6;
     Address delivery_address = 7;

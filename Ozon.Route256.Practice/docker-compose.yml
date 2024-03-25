@@ -30,6 +30,7 @@ services:
         environment:
           "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
           "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
+          "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
           "ROUTE256_GRPC_PORT": "5005"
     
     orders-service-2:
@@ -42,6 +43,7 @@ services:
         environment:
           "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
           "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
+          "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
           "ROUTE256_GRPC_PORT": "5006"
 
     orders-service-db:

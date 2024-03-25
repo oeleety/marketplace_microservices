@@ -43,18 +43,18 @@ public sealed class ExceptionHandler
         await context.Response.WriteAsJsonAsync(response);
     }
 
-    private ExceptionResponse CreateResponse(RpcException ex) =>
+    private static ExceptionResponse CreateResponse(RpcException ex) =>
         ex.Status.StatusCode switch
         {
             StatusCode.NotFound => new(HttpStatusCode.NotFound, ex.Status.Detail),
             StatusCode.FailedPrecondition => new(HttpStatusCode.BadRequest, ex.Status.Detail),
             StatusCode.Cancelled => new(HttpStatusCode.RequestTimeout, ex.Status.Detail),
             StatusCode.Unknown => new(HttpStatusCode.InternalServerError, ex.Status.Detail),
-            StatusCode.InvalidArgument => new(HttpStatusCode.InternalServerError, ex.Status.Detail),
+            StatusCode.InvalidArgument => new(HttpStatusCode.BadRequest, ex.Status.Detail),
             _ => new(HttpStatusCode.InternalServerError, ex.Status.Detail)
         };
 
-    private ExceptionResponse CreateResponse(Exception ex, string errorMessage) =>
+    private static ExceptionResponse CreateResponse(Exception ex, string errorMessage) =>
         ex switch
         {
             _ => new(HttpStatusCode.InternalServerError, errorMessage)
