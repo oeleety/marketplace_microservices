@@ -1,26 +1,26 @@
 syntax = "proto3";
 
-option csharp_namespace = "Ozon.Route256.Practice.OrdersService";
+option csharp_namespace = "Ozon.Route256.Practice.OrdersService.Proto";
 import "google/protobuf/timestamp.proto";
-
+import "google/protobuf/wrappers.proto";
 
 service Orders
 {
-  rpc CancelOrder(CancelOrderRequest) returns(CancelOrderResponse);
-  rpc GetOrderStatus(GetOrderStatusRequest) returns(GetOrderStatusResponse);
-  rpc GetRegions(GetRegionsRequest) returns(GetRegionsResponse);
-  rpc GetOrders(GetOrdersRequest) returns(GetOrdersResponse);
-  rpc GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest) returns(GetAggregatedOrdersByRegionResponse);
-  rpc GetOrdersByCustomer(GetOrdersByCustomerRequest) returns(GetOrdersByCustomerResponse);
+    rpc CancelOrder(CancelOrderRequest) returns(CancelOrderResponse);
+    rpc GetOrderStatus(GetOrderStatusRequest) returns(GetOrderStatusResponse);
+    rpc GetRegions(GetRegionsRequest) returns(GetRegionsResponse);
+    rpc GetOrders(GetOrdersRequest) returns(GetOrdersResponse);
+    rpc GetAggregatedOrdersByRegion(GetAggregatedOrdersByRegionRequest) returns(GetAggregatedOrdersByRegionResponse);
+    rpc GetOrdersByCustomer(GetOrdersByCustomerRequest) returns(GetOrdersByCustomerResponse);
 }
 
 message CancelOrderRequest {
-  int64 id = 1;
+    int64 id = 1;
 }
 
 message CancelOrderResponse {
     bool success = 1;
-    optional string error = 2; // google.protobuf.StringValue error = 2; doesn't work somehow todo
+    google.protobuf.StringValue error = 2;
 }
 
 message GetOrderStatusRequest {
@@ -28,7 +28,7 @@ message GetOrderStatusRequest {
 }
 
 message GetOrderStatusResponse {
-   OrderStatus status = 1;
+    OrderStatus status = 1;
 }
 
 message GetRegionsRequest {
@@ -41,7 +41,7 @@ message GetRegionsResponse {
 message GetOrdersRequest {
     repeated Region regions = 1;
     OrderType order_type = 2;
-    Paginate paginate = 3;
+    Pagination pagination = 3;
     optional SortOrder sort_order = 4;
     optional ValueOrder value_order = 5;
 }
@@ -51,19 +51,18 @@ message GetOrdersResponse {
 }
 
 message GetAggregatedOrdersByRegionRequest {
-    repeated Region regions = 1; // todo maybe just region id is better(or a name if it's unique')
+    repeated Region regions = 1;
     google.protobuf.Timestamp since_timestamp = 2;
 }
 
 message GetAggregatedOrdersByRegionResponse {
-    map<int32, OrdersStat> stat_by_region = 1; 
-    repeated Region regions = 2; // contains a name of region
+    map<int32, OrdersStatistic> statistic_by_region = 1; 
 }
 
 message GetOrdersByCustomerRequest {
-    int64 customer_Id = 1;
+    int32 customer_Id = 1;
     google.protobuf.Timestamp since_timestamp = 2;
-    Paginate paginate = 3;
+    Pagination pagination = 3;
 }
 
 message GetOrdersByCustomerResponse {
@@ -75,7 +74,7 @@ message Order {
     int64 id = 1;
     OrderStatus status = 2;
     OrderType type = 3;
-    int64 customer_Id = 4;
+    int32 customer_Id = 4;
     string customer_full_name = 5;
     string customer_mobile_number = 6;
     Address delivery_address = 7;
@@ -101,37 +100,31 @@ message Region {
     string name = 2;
 }
 
-message OrdersStat{
+message OrdersStatistic{
+    string region = 1;
     int32 orders_count = 2;
-    double price = 3; // Общая сумма заказов?? todo
+    double price = 3;
     double weight = 4;
     int32 customers_count = 5;
 }
 
-message Paginate {
-    int32 position = 1;
-    int32 count = 2;
-    Direction direction = 3;
+message Pagination {
+    int32 offset = 1; 
+    int32 limit = 2;
 }
 
 enum OrderStatus {
-    created = 0;
-    sent_to_customer = 1;
-    delivered = 2;
-    lost = 3;
-    cancelled = 4;
+    CREATED = 0;
+    SENT_TO_CUSTOMER = 1;
+    DELIVERED = 2;
+    LOST = 3;
+    CANCELLED = 4;
 }
 
 enum OrderType {
-    web = 0;
-    api = 1;
-    mobile = 2;
-}
-
-enum Direction {
-    after = 0;
-    before = 1;
-    arounf = 2;
+    WEB = 0;
+    API = 1;
+    MOBILE = 2;
 }
 
 enum SortOrder {
@@ -140,6 +133,7 @@ enum SortOrder {
 }
 
 enum ValueOrder {
-    region = 0;
-    status = 1;
+    NONE = 0;
+    REGION = 1;
+    STATUS = 2;
 }

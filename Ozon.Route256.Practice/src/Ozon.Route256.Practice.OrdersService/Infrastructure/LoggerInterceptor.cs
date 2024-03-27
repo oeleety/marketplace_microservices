@@ -31,15 +31,30 @@ internal sealed class LoggerInterceptor : Interceptor
         }
         catch (RpcException ex)
         {
-            _logger.LogError(ex, "Some exception happened");
+            _logger.LogError(ex, $"{nameof(RpcException)} happened");
             throw;
         }
         catch (NotFoundException ex)
         {
-            _logger.LogError(ex, "Some exception happened");
+            _logger.LogError(ex, $"{nameof(NotFoundException)} happened");
             throw new RpcException(new Status(StatusCode.NotFound, ex.Message));
         }
-        catch (Exception ex)
+        catch (UnprocessableException ex)
+        {
+            _logger.LogError(ex, $"{nameof(UnprocessableException)} happened");
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
+        }
+        catch (InvalidArgumentException ex)
+        {
+            _logger.LogError(ex, $"{nameof(InvalidArgumentException)} happened");
+            throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogError(ex, $"{nameof(OperationCanceledException)} happened");
+            throw new RpcException(new Status(StatusCode.Cancelled, ex.Message));
+        }
+        catch (Exception ex) 
         {
             _logger.LogError(ex, "Some exception happened");
             throw new RpcException(new Status(StatusCode.Unknown, ex.Message));

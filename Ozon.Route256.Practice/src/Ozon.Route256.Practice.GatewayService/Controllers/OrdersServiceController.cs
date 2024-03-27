@@ -1,6 +1,6 @@
 ﻿using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
-using Ozon.Route256.Practice.OrdersService;
+using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.GatewayService.Controllers;
 
@@ -32,77 +32,29 @@ public class OrdersServiceController : ControllerBase
         catch(RpcException ex)
         {
             _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
+            return ex.Status.StatusCode switch
             {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"{nameof(CancelOrder)}. Got exception from GRPC OrdersService.");
-            throw new NotImplementedException();
+                Grpc.Core.StatusCode.FailedPrecondition => BadRequest(new CancelOrderResponse { Success = false, Error = ex.Status.Detail} ),
+                _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Status.Detail })
+            };
         }
     }
 
     [HttpGet("order/status/{id}")]
     public async Task<IActionResult> GetOrderStatus(int id)
     {
-        try
-        {
-            var response = await _client.GetOrderStatusAsync(new GetOrderStatusRequest { Id = id});
-            _logger.LogInformation($"{nameof(GetOrderStatus)}. Got response from GRPC OrdersService : status = {response.Status}");
-            return Ok(response);
-        }
-        catch (RpcException ex)
-        {
-            _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"{nameof(GetOrderStatus)}. Got exception from GRPC OrdersService");
-            throw new NotImplementedException();
-        }
+        var response = await _client.GetOrderStatusAsync(new GetOrderStatusRequest { Id = id});
+        _logger.LogInformation($"{nameof(GetOrderStatus)}. Got response from GRPC OrdersService : status = {response.Status}");
+        return Ok(response);
     }
 
     [HttpPost("orders/list")]
     public async Task<IActionResult> GetOrders(
         [FromBody] GetOrdersRequest request)
     {
-        try
-        {
-            var response = await _client.GetOrdersAsync(request);
-            _logger.LogInformation($"{nameof(GetOrders)}. Got response from GRPC OrdersService.");
-            return Ok(response);
-        }
-        catch (RpcException ex)
-        {
-            _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
-            if (ex.Status.StatusCode == Grpc.Core.StatusCode.NotFound)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"{nameof(GetOrders)}. Got exception from GRPC OrdersService");
-            throw new NotImplementedException();
-        }
+        var response = await _client.GetOrdersAsync(request);
+        _logger.LogInformation($"{nameof(GetOrders)}. Got response from GRPC OrdersService.");
+        return Ok(response);
     }
 
     [HttpPost("orders/list/by-customer")]
@@ -127,15 +79,8 @@ public class OrdersServiceController : ControllerBase
     public async Task<IActionResult> GetAggregatedOrdersByRegion(
         [FromBody] GetAggregatedOrdersByRegionRequest request)
     {
-        try
-        {
-            var response = await _client.GetAggregatedOrdersByRegionAsync(request);
-            _logger.LogInformation($"{nameof(GetAggregatedOrdersByRegion)}. Got response from GRPC OrdersService");
-            return Ok(response);
-        }
-        catch (RpcException ex)
-        {
-            throw new NotImplementedException();
-        }
+        var response = await _client.GetAggregatedOrdersByRegionAsync(request);
+        _logger.LogInformation($"{nameof(GetAggregatedOrdersByRegion)}. Got response from GRPC OrdersService");
+        return Ok(response);
     }
 }

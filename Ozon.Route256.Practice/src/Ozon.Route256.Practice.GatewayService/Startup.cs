@@ -1,7 +1,10 @@
-﻿using Grpc.Core;
+﻿using System.Text.Json.Serialization;
+using Grpc.Core;
 using Grpc.Net.Client.Balancer;
 using Grpc.Net.Client.Configuration;
-using Ozon.Route256.Practice.OrdersService;
+using Ozon.Route256.Practice.GatewayService.Middleware;
+using Ozon.Route256.Practice.OrdersService.Proto;
+using Ozon.Route256.Practice.Shared;
 
 namespace Ozon.Route256.Practice.GatewayService;
 
@@ -22,11 +25,13 @@ public sealed class Startup
              new BalancerAddress("orders-service-2", 5005)
         });
 
-        serviceCollection.AddControllers();
+        serviceCollection.AddControllers().AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        });
         serviceCollection.AddEndpointsApiExplorer();
         serviceCollection.AddSwaggerGen();
         serviceCollection.AddSingleton<ResolverFactory>(factory);
-
         serviceCollection.AddGrpcClient<Orders.OrdersClient>(options =>
         {
             options.Address = new Uri("static:///orders-service");
@@ -41,18 +46,13 @@ public sealed class Startup
 
         serviceCollection.AddGrpcClient<Customers.CustomersClient>(option =>
         {
-            var url = _configuration.GetValue<string>("ROUTE256_CUSTOMER_ADDRESS");
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("ROUTE256_CUSTOMER_ADDRESS variable is null or empty");
-            }
-
-            option.Address = new Uri(url);
+            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_CUSTOMER_ADDRESS"));
         });
     }
 
     public void Configure(IApplicationBuilder applicationBuilder)
     {
+        applicationBuilder.UseMiddleware<ExceptionHandler>();
         applicationBuilder.UseRouting();
         applicationBuilder.UseSwagger();
         applicationBuilder.UseSwaggerUI();
