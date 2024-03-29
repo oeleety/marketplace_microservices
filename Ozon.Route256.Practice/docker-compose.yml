@@ -11,19 +11,19 @@ volumes:
 services:
     gateway-service:
         build: 
-            context: ./src/Ozon.Route256.Practice.GatewayService
-            dockerfile: Dockerfile
+            context: ./src
+            dockerfile: /Ozon.Route256.Practice.GatewayService/Dockerfile
         container_name: gateway-service
         ports:
           - "5082:5004"
         environment:
             "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
             "ROUTE256_HTTP_PORT": "5004"
-
+    
     orders-service-1:
         build: 
-            context: ./src/Ozon.Route256.Practice.OrdersService
-            dockerfile: Dockerfile
+            context: ./src
+            dockerfile: /Ozon.Route256.Practice.OrdersService/Dockerfile
         container_name: orders-service-1
         ports:
             - "5083:5005"
@@ -32,11 +32,14 @@ services:
           "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
           "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
           "ROUTE256_GRPC_PORT": "5005"
+        depends_on:
+            - broker-1
+            - broker-2
     
     orders-service-2:
         build: 
-            context: ./src/Ozon.Route256.Practice.OrdersService
-            dockerfile: Dockerfile
+            context: ./src
+            dockerfile: /Ozon.Route256.Practice.OrdersService/Dockerfile
         container_name: orders-service-2
         ports:
             - "5084:5006"
@@ -45,6 +48,9 @@ services:
           "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
           "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
           "ROUTE256_GRPC_PORT": "5006"
+        depends_on:
+            - broker-1
+            - broker-2
 
     orders-service-db:
         image: postgres:latest
