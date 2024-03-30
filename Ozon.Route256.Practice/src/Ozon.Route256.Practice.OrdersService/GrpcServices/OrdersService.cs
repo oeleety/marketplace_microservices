@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Ozon.Route256.Practice.OrdersService.CachedClients;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
@@ -12,19 +13,16 @@ public sealed class OrdersService : Orders.OrdersBase
 {
     private readonly IOrdersRepository _repository;
     private readonly LogisticsSimulatorClient _logisticsService;
-    private readonly CustomersServiceClient _customersService;
-    private readonly RedisCustomersCache _customersCache;
+    private readonly CachedCustomersClient _cachedCustomersClient;
 
     public OrdersService(
         IOrdersRepository repository,
         LogisticsSimulatorClient logisticsService,
-        CustomersServiceClient customersService,
-        RedisCustomersCache customersCache)
+        CachedCustomersClient cachedCustomersClients)
     {
         _repository = repository;
         _logisticsService = logisticsService;
-        _customersService = customersService;
-        _customersCache = customersCache;
+        _cachedCustomersClient = cachedCustomersClients;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
@@ -87,11 +85,7 @@ public sealed class OrdersService : Orders.OrdersBase
         try
         {
             var id = request.CustomerId;
-            if(!await _customersCache.IsExistAsync(id, context.CancellationToken))
-            {
-                var customer = await _customersService.GetCustomerByIdAsync(id, context.CancellationToken);
-                await _customersCache.AddAsync(customer, context.CancellationToken); // todo test it
-            }
+            await _cachedCustomersClient.EnsureExistsAsync(id, context.CancellationToken);
         }
         catch (RpcException ex) when (ex.Status.StatusCode == StatusCode.NotFound)
         {   

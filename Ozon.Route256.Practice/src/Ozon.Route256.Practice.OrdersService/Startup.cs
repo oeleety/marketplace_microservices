@@ -4,6 +4,7 @@ using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Ozon.Route256.Practice.Shared;
 using Ozon.Route256.Practice.OrdersService.Configuration;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
+using Ozon.Route256.Practice.OrdersService.CachedClients;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -31,7 +32,8 @@ public sealed class Startup
             .AddSettings(_configuration)
             .AddGrpcClients(_configuration)
             .AddInfrastructure(_configuration)
-            .AddRepositories();
+            .AddRepositories()
+            .AddCachedClients();
 
     }
 

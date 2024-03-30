@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services
+            .AddKafka()
             .AddRedis(configuration)
             .AddGrpcReflection()
             .AddGrpc(o => o.Interceptors.Add<LoggerInterceptor>());

@@ -18,9 +18,12 @@ public sealed class CustomersServiceClient
     public async Task<Customer> GetCustomerByIdAsync(int id,
         CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Trying to find a customer with id = {id}", id);
         var response = await _client.GetCustomerByIdAsync(
             new GetCustomerByIdRequest { Id = id },
             cancellationToken: cancellationToken);
+        _logger.LogInformation("Found a customer with id = {id}", id);
+
         return response.Customer;
     }
 }

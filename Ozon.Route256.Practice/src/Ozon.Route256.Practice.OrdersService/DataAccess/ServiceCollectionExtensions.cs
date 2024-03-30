@@ -6,6 +6,7 @@ public static class ServiceCollectionExtensions
     {
         collection.AddScoped<IOrdersRepository, OrdersRepository>();
         collection.AddScoped<RedisCustomersCache>();
+        collection.AddScoped<RedisOrdersRepository>();
 
         return collection;
     }
