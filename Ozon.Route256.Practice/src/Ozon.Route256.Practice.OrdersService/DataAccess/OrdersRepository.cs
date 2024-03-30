@@ -9,6 +9,7 @@ internal class OrdersRepository : IOrdersRepository
 {
     private static readonly ConcurrentDictionary<int, RegionEntity> _regions = new();
     private static readonly ConcurrentDictionary<long, OrderEntity> _orders = new();
+    private static readonly ConcurrentDictionary<string, (double latitude, double Longitude)> _depotsByRegion = new();
     private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
         OrderStatusEntity.Cancelled,
@@ -23,6 +24,10 @@ internal class OrdersRepository : IOrdersRepository
         _regions.TryAdd(moscow.Id, moscow);
         _regions.TryAdd(novosibirsk.Id, novosibirsk);
         _regions.TryAdd(spb.Id, spb);
+
+        _depotsByRegion.TryAdd(moscow.Name, (55.7575, 37.6352));
+        _depotsByRegion.TryAdd(novosibirsk.Name, (54.9738, 82.8909));
+        _depotsByRegion.TryAdd(spb.Name, (59.9374, 30.3550));
 
         var date = DateTime.ParseExact("2023-11-01 14:40:52,531", "yyyy-MM-dd HH:mm:ss,fff", System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
         var order1 = new OrderEntity(1, OrderStatusEntity.Created, OrderTypeEntity.Api, CustomerId: 1, 
@@ -60,6 +65,14 @@ internal class OrdersRepository : IOrdersRepository
         token.ThrowIfCancellationRequested();
 
         return Task.FromResult(_regions.Values.ToArray());
+    }
+
+    public Task<ConcurrentDictionary<string, (double latitude, double Longitude)>> 
+        GetRegionsWithDepots(CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested();
+
+        return Task.FromResult(_depotsByRegion);
     }
 
     public Task<OrderEntity[]> GetOrders(

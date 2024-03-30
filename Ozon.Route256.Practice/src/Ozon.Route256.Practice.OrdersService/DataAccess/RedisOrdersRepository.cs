@@ -31,7 +31,17 @@ public sealed class RedisOrdersRepository //: IOrdersRepository todo?
 
         await _database.StringSetAsync(key, resultRedis);
     }
-    
+
+    public async Task<bool> IsExist(NewOrder order, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var key = BuildOrderKey(order.Id);
+
+        var contains = await _database.KeyExistsAsync(key);
+
+        return contains;
+    }
+
     private static RedisKey BuildOrderKey(long orderId)
     {
         return new RedisKey($"orders:{orderId}");

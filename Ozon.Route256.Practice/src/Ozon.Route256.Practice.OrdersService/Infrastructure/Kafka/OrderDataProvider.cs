@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka;
 
-internal class OrderDataProvider : IKafkaDataProvider<long, string>
+internal sealed class OrderDataProvider : IKafkaDataProvider<long, string>
 {
     public OrderDataProvider(
         ILogger<OrderDataProvider> logger,
@@ -24,20 +24,20 @@ internal class OrderDataProvider : IKafkaDataProvider<long, string>
             .SetLogHandler((_, message) => logger.LogInformation(message.Message))
             .Build();
 
-        //var producerConfig = new ProducerConfig
-        //{
-        //    BootstrapServers = "localhost:29091",
-        //};
+        var producerConfig = new ProducerConfig
+        {
+            BootstrapServers = "localhost:29091",
+        };
 
-        //ProducerBuilder<long, string> producerBuilder = new(producerConfig);
-        
-        //Producer = producerBuilder
-        //    .SetErrorHandler((_, error) => { logger.LogError(error.Reason); })
-        //    .SetLogHandler((_, message) => logger.LogInformation(message.Message))
-        //    .Build();
+        ProducerBuilder<long, string> producerBuilder = new(producerConfig);
+
+        Producer = producerBuilder
+            .SetErrorHandler((_, error) => { logger.LogError(error.Reason); })
+            .SetLogHandler((_, message) => logger.LogInformation(message.Message))
+            .Build();
     }
 
     public IConsumer<long, string> Consumer { get; }
 
-    //public IProducer<long, string> Producer { get; }
+    public IProducer<long, string> Producer { get; }
 }

@@ -1,4 +1,5 @@
-﻿using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
+﻿using System.Collections.Concurrent;
+using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 
 namespace Ozon.Route256.Practice.OrdersService.DataAccess;
 
@@ -11,6 +12,9 @@ public interface IOrdersRepository
     Task<OrderStatusEntity> GetOrderStatusAsync(long id, CancellationToken token = default);
 
     Task<RegionEntity[]> GetRegions(CancellationToken token = default);
+
+    public Task<ConcurrentDictionary<string, (double latitude, double Longitude)>>
+        GetRegionsWithDepots(CancellationToken token = default);
 
     Task<OrderEntity[]> GetOrders(
         RegionEntity[] regions, 
