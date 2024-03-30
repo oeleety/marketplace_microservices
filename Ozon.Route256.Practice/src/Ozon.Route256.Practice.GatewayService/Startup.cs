@@ -4,6 +4,7 @@ using Grpc.Net.Client.Balancer;
 using Grpc.Net.Client.Configuration;
 using Ozon.Route256.Practice.GatewayService.Middleware;
 using Ozon.Route256.Practice.OrdersService.Proto;
+using Ozon.Route256.Practice.Proto;
 using Ozon.Route256.Practice.Shared;
 
 namespace Ozon.Route256.Practice.GatewayService;

@@ -15,10 +15,12 @@ public sealed class CustomersServiceClient
         _logger = logger;
     }
 
-    public async Task<Customer> GetCustomerByIdAsync(int id)
+    public async Task<Customer> GetCustomerByIdAsync(int id,
+        CancellationToken cancellationToken)
     {
         var response = await _client.GetCustomerByIdAsync(
-            new GetCustomerByIdRequest { Id = id });
+            new GetCustomerByIdRequest { Id = id },
+            cancellationToken: cancellationToken);
         return response.Customer;
     }
 }

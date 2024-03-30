@@ -41,7 +41,7 @@ internal class OrdersRepository : IOrdersRepository
 
     public async Task CancelOrderAsync(long id, CancellationToken token = default)
     {
-        var order = await ThrowIfCancelProhibitedAsync(id);
+        var order = await ThrowIfCancelProhibitedAsync(id, token);
         var updatedOrder = order with { OrderStatus = OrderStatusEntity.Cancelled };
         token.ThrowIfCancellationRequested();
         _orders[order.Id] = updatedOrder;

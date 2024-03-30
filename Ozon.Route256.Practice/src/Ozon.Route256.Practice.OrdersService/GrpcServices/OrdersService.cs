@@ -13,15 +13,18 @@ public sealed class OrdersService : Orders.OrdersBase
     private readonly IOrdersRepository _repository;
     private readonly LogisticsSimulatorClient _logisticsService;
     private readonly CustomersServiceClient _customersService;
+    private readonly RedisCustomersCache _customersCache;
 
     public OrdersService(
         IOrdersRepository repository,
         LogisticsSimulatorClient logisticsService,
-        CustomersServiceClient customersService)
+        CustomersServiceClient customersService,
+        RedisCustomersCache customersCache)
     {
         _repository = repository;
         _logisticsService = logisticsService;
         _customersService = customersService;
+        _customersCache = customersCache;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
@@ -83,10 +86,15 @@ public sealed class OrdersService : Orders.OrdersBase
     {
         try
         {
-            var customer = await _customersService.GetCustomerByIdAsync(request.CustomerId);
+            var id = request.CustomerId;
+            if(!await _customersCache.IsExistAsync(id, context.CancellationToken))
+            {
+                var customer = await _customersService.GetCustomerByIdAsync(id, context.CancellationToken);
+                await _customersCache.AddAsync(customer, context.CancellationToken); // todo test it
+            }
         }
         catch (RpcException ex) when (ex.Status.StatusCode == StatusCode.NotFound)
-        {
+        {   
             throw new InvalidArgumentException(ex.Status.Detail);
         }
 

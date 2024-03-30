@@ -1,10 +1,9 @@
 ﻿using Ozon.Route256.Practice.OrdersService.ClientBalancing;
-using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure;
-using Ozon.Route256.Practice.LogisticsSimulator.Grpc;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Ozon.Route256.Practice.Shared;
-using Ozon.Route256.Practice.Proto;
+using Ozon.Route256.Practice.OrdersService.Configuration;
+using Ozon.Route256.Practice.OrdersService.DataAccess;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -19,28 +18,21 @@ public sealed class Startup
 
     public void ConfigureServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddGrpc(option => option.Interceptors.Add<LoggerInterceptor>());
+        serviceCollection.AddControllers();
+        serviceCollection.AddEndpointsApiExplorer();
+        serviceCollection.AddSwaggerGen();
         serviceCollection.AddGrpcClient<SdService.SdServiceClient>(option =>
         {
             option.Address = new Uri(_configuration.TryGetValue("ROUTE256_SD_ADDRESS"));
         });
-        serviceCollection.AddGrpcClient<LogisticsSimulatorService.LogisticsSimulatorServiceClient>(option =>
-        {
-            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_LS_ADDRESS"));
-        });
-        serviceCollection.AddGrpcClient<Customers.CustomersClient>(option =>
-        {
-            option.Address = new Uri(_configuration.TryGetValue("ROUTE256_CUSTOMER_ADDRESS"));
-        });
-        serviceCollection.AddSingleton<LogisticsSimulatorClient>();
-        serviceCollection.AddSingleton<CustomersServiceClient>();
-        serviceCollection.AddControllers();
-        serviceCollection.AddEndpointsApiExplorer();
-        serviceCollection.AddSwaggerGen();
-        serviceCollection.AddGrpcReflection();
-        serviceCollection.AddScoped<IOrdersRepository, OrdersRepository>();
         serviceCollection.AddSingleton<IDbStore, DbStore>();
         serviceCollection.AddHostedService<SdConsumerHostedService>();
+        serviceCollection
+            .AddSettings(_configuration)
+            .AddGrpcClients(_configuration)
+            .AddInfrastructure(_configuration)
+            .AddRepositories();
+
     }
 
     public void Configure(IApplicationBuilder applicationBuilder)
