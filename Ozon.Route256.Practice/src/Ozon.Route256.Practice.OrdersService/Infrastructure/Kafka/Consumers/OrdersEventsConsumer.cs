@@ -9,7 +9,7 @@ namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 public class OrdersEventsConsumer : ConsumerBackgroundService<long, string>
 {
     private readonly ILogger<OrdersEventsConsumer> _logger;
-    private readonly RedisOrdersRepository _redisOrdersRepository;
+    private readonly IRedisOrdersRepository _redisOrdersRepository;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
@@ -26,7 +26,7 @@ public class OrdersEventsConsumer : ConsumerBackgroundService<long, string>
         : base(serviceProvider, kafkaDataProvider, logger)
     {
         _logger = logger;
-        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<RedisOrdersRepository>();
+        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
     }
 
     protected override string TopicName { get; } = "orders_events";

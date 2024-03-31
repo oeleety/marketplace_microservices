@@ -50,7 +50,6 @@ public sealed class RedisCustomersCache
         _logger.LogInformation("Trying to find a customer with id = {id}", id);
         var contains = await _database.KeyExistsAsync(key);
         _logger.LogInformation(" Result of searching a customer with id = {id} is {contains}", id, contains);
-        ;
 
         return contains;
     }
@@ -65,8 +64,8 @@ public sealed class RedisCustomersCache
         await _database.StringSetAsync(key, resultRedis);
     }
 
-    private static RedisKey BuildCustomerKey(int Id)
+    private static RedisKey BuildCustomerKey(int id)
     {
-        return new RedisKey($"customers:{Id}");
+        return new RedisKey($"customers:{id}");
     }
 }

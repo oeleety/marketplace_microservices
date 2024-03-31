@@ -7,20 +7,25 @@ using Ozon.Route256.Practice.OrdersService.CachedClients;
 using System.Collections.Concurrent;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
+using Ozon.Route256.Practice.OrdersService.GrpcClients;
+using Bogus;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 public class PreOrderConsumer : ConsumerBackgroundService<long, string>
 {
-    private const int DeliveryArea = 7000000; // meters
+    private const int DeliveryArea = 5000000; // meters
 
     private static ConcurrentDictionary<string, (double latitude, double Longitude)> _depotsByRegion;
+    private static readonly Faker Faker = new();
 
     private readonly ILogger<PreOrderConsumer> _logger;
     private readonly CachedCustomersClient _cachedCustomersClient;
-    private readonly RedisOrdersRepository _redisOrdersRepository;
+    private readonly IRedisOrdersRepository _redisOrdersRepository;
     private readonly IOrdersRepository _ordersRepository;
     private readonly INewOrderProducer _producer;
+    private readonly CustomersServiceClient _customersServiceTest;
+    private bool _isCustomersFilledTest = false;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
@@ -34,14 +39,16 @@ public class PreOrderConsumer : ConsumerBackgroundService<long, string>
         IServiceProvider serviceProvider,
         IKafkaDataProvider<long, string> kafkaDataProvider,
         INewOrderProducer producer,
+        CustomersServiceClient customersService,
         ILogger<PreOrderConsumer> logger)
         : base(serviceProvider, kafkaDataProvider, logger)
     {
         _logger = logger;
-        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<RedisOrdersRepository>();
+        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
         _cachedCustomersClient = _scope.ServiceProvider.GetRequiredService<CachedCustomersClient>();
         _ordersRepository = _scope.ServiceProvider.GetRequiredService<IOrdersRepository>();
         _producer = producer;
+        _customersServiceTest = customersService;
     }
 
     protected override string TopicName { get; } = "pre_orders";
@@ -54,12 +61,24 @@ public class PreOrderConsumer : ConsumerBackgroundService<long, string>
         _logger.LogInformation("Handling messages from kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
         var value = message.Message.Value;
         var preOrder = JsonSerializer.Deserialize<PreOrder>(value, _jsonSerializerOptions);
-        var customer = await _cachedCustomersClient.GetCustomerByIdAsync(preOrder.Customer.Id, cancellationToken);
-        //var customer = await _cachedCustomersClient.GetCustomerByIdAsync(1, cancellationToken); // todo for testing(create customer with id =1 via postman)
+
+        int count = 5;
+        if (!_isCustomersFilledTest) // for testing. there's no customers in CustomersService todo
+        {
+            for( var i = 1; i <= count; i++)
+            {
+                var randomCustomer = CreateRandomCustomer(i);
+                await _customersServiceTest.CreateCustomerAsync(randomCustomer, cancellationToken);
+                _logger.LogInformation("Customers servise contains customers");
+            }
+            _isCustomersFilledTest = true;
+        }
+        var customerId = new Random().Next(1, count + 1);// preOrder.Customer.Id
+        var customer = await _cachedCustomersClient.GetCustomerByIdAsync(customerId, cancellationToken);
         if (customer is null)
         {
-            _logger.LogError("Couldn't find a customer in CustomerService with id = {preOrder.Customer.Id} " +
-                "from a preorder with key {message.Message.Key}", preOrder.Customer.Id, message.Message.Key);
+            _logger.LogError("Couldn't find a customer in CustomerService with id = {customerId} " +
+                "from a preorder with key {message.Message.Key}", customerId, message.Message.Key);
             return;
         }
         var orderEntity = From(preOrder, customer);
@@ -135,19 +154,45 @@ public class PreOrderConsumer : ConsumerBackgroundService<long, string>
         a.Longitude);
 
     /// <summary>
-    /// Distance between two points in meters
+    /// Distance between two points in meters (GeoCoordinate)
     /// </summary>
     /// <param name="address1"></param>
     /// <param name="address2"></param>
     /// <returns></returns>
     private static double GetDistance((double latitude, double longitude) address1, (double latitude, double longitude) address2)
     {
-        var d1 = address1.latitude * (Math.PI / 180.0);
-        var num1 = address1.longitude * (Math.PI / 180.0);
-        var d2 = address2.latitude * (Math.PI / 180.0);
-        var num2 = address2.longitude * (Math.PI / 180.0) - num1;
+        var oneDegree = Math.PI / 180.0;
+        var d1 = address1.latitude * oneDegree;
+        var num1 = address1.longitude * oneDegree;
+        var d2 = address2.latitude * oneDegree;
+        var num2 = address2.longitude * oneDegree - num1;
         var d3 = Math.Pow(Math.Sin((d2 - d1) / 2.0), 2.0) + Math.Cos(d1) * Math.Cos(d2) * Math.Pow(Math.Sin(num2 / 2.0), 2.0);
+        var earthR = 6376500.0;
+        return earthR * (2.0 * Math.Atan2(Math.Sqrt(d3), Math.Sqrt(1.0 - d3)));
+    }
 
-        return 6376500.0 * (2.0 * Math.Atan2(Math.Sqrt(d3), Math.Sqrt(1.0 - d3)));
+    private static Practice.Proto.Customer CreateRandomCustomer(int id = -1)
+    {
+        var adresses = Enumerable.Range(0, Faker.Random.Int(1, 3)).
+                Select(_ => new Practice.Proto.Address
+                {
+                    Apartment = Faker.Random.Int(9, 999).ToString(),
+                    Building = Faker.Address.BuildingNumber(),
+                    Region = Faker.Address.State(),
+                    City = Faker.Address.City(),
+                    Street = Faker.Address.StreetName(),
+                    Latitude = Faker.Address.Latitude(),
+                    Longitude = Faker.Address.Longitude()
+                });
+        return new Practice.Proto.Customer
+        {
+            Id = id == -1 ? Faker.Random.Int(100, 10000) : id,
+            FirstName = Faker.Name.FirstName(),
+            LastName = Faker.Name.LastName(),
+            MobileNumber = Faker.Phone.PhoneNumber(),
+            Email = Faker.Person.Email,
+            Addressed = { adresses },
+            DefaultAddress = adresses.First()
+        };
     }
 }

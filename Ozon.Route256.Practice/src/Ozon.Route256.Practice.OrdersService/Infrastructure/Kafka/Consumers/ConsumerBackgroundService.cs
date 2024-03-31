@@ -2,8 +2,6 @@
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
-/// <typeparam name="TKey"></typeparam>
-/// <typeparam name="TValue"></typeparam>
 public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundService
 {
     private readonly IKafkaDataProvider<TKey, TValue> _kafkaDataProvider;

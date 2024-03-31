@@ -13,7 +13,7 @@ public interface IOrdersRepository
 
     Task<RegionEntity[]> GetRegions(CancellationToken token = default);
 
-    public Task<ConcurrentDictionary<string, (double latitude, double Longitude)>>
+    Task<ConcurrentDictionary<string, (double latitude, double Longitude)>>
         GetRegionsWithDepots(CancellationToken token = default);
 
     Task<OrderEntity[]> GetOrders(

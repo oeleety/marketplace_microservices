@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
                 var address = configuration.TryGetValue("ROUTE256_REDIS");
                 var connection = ConnectionMultiplexer.Connect(address);
 
-                 return connection;
+                return connection;
             });
 
         return services;

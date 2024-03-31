@@ -6,7 +6,7 @@ using Ozon.Route256.Practice.OrdersService.Exceptions;
 
 namespace Ozon.Route256.Practice.OrdersService.DataAccess;
 
-public sealed class RedisOrdersRepository //: IOrdersRepository todo?
+public sealed class RedisOrdersRepository : IRedisOrdersRepository
 {
     private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
@@ -29,7 +29,7 @@ public sealed class RedisOrdersRepository //: IOrdersRepository todo?
         _database = connectionMultiplexer.GetDatabase(0);
     }
 
-    public async Task AddOrderAsync(OrderEntity order, CancellationToken token = default)
+    public async Task AddOrderAsync(OrderEntity order, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var key = BuildOrderKey(order.Id);
@@ -71,14 +71,14 @@ public sealed class RedisOrdersRepository //: IOrdersRepository todo?
 
         var resultRedis = await _database.StringGetAsync(key);
 
-        var result = resultRedis.HasValue 
-            ? JsonSerializer.Deserialize<OrderEntity>(resultRedis.ToString(), _jsonSerializerOptions) 
+        var result = resultRedis.HasValue
+            ? JsonSerializer.Deserialize<OrderEntity>(resultRedis.ToString(), _jsonSerializerOptions)
             : null;
 
         return result;
     }
 
-    public async Task CancelOrderAsync(long id, CancellationToken token = default)
+    public async Task CancelOrderAsync(long id, CancellationToken token)
     {
         var order = await ThrowIfCancelProhibitedAsync(id, token);
         var updatedOrder = order with { OrderStatus = OrderStatusEntity.Cancelled };
@@ -87,8 +87,8 @@ public sealed class RedisOrdersRepository //: IOrdersRepository todo?
     }
 
     public async Task<OrderStatusEntity> GetOrderStatusAsync(
-        long id, 
-        CancellationToken token = default)
+        long id,
+        CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
 
@@ -105,7 +105,7 @@ public sealed class RedisOrdersRepository //: IOrdersRepository todo?
         return new RedisKey($"orders:{orderId}");
     }
 
-    public async Task<OrderEntity> ThrowIfCancelProhibitedAsync(long id, CancellationToken token = default)
+    private async Task<OrderEntity> ThrowIfCancelProhibitedAsync(long id, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
 
