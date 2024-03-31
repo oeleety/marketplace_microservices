@@ -88,12 +88,13 @@ public sealed class RedisOrdersRepository : IRedisOrdersRepository
 
     public async Task<OrderStatusEntity> GetOrderStatusAsync(
         long id,
-        CancellationToken token)
+        CancellationToken token,
+        bool filterPreorders = true)
     {
         token.ThrowIfCancellationRequested();
 
         var order = await FindAsync(id, token);
-        if (order is null)
+        if (order is null || (filterPreorders && order.OrderStatus == OrderStatusEntity.PreOrder))
         {
             throw new NotFoundException($"Order with id={id} not found");
         }
