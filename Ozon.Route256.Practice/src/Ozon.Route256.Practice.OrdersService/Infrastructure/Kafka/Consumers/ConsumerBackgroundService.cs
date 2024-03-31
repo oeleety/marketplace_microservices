@@ -6,8 +6,6 @@ namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 /// <typeparam name="TValue"></typeparam>
 public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundService
 {
-    private const string TopicName = "pre_orders";
-
     private readonly IKafkaDataProvider<TKey, TValue> _kafkaDataProvider;
     private readonly ILogger _logger;
     protected readonly IServiceScope _scope;
@@ -21,6 +19,8 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
         _logger = logger;
         _scope = serviceProvider.CreateScope();
     }
+
+    protected abstract string TopicName { get; }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -55,7 +55,6 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
 
             if (message is null)
             {
-                //_logger.LogWarning("No message");
                 await Task.Delay(100, cancellationToken);
                 return;
             }

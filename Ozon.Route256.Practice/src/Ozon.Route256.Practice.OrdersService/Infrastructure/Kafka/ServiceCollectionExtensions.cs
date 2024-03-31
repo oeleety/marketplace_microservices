@@ -9,6 +9,7 @@ public static partial class ServiceCollectionExtensions
     {
         collection.AddSingleton<IKafkaDataProvider<long, string>, OrderDataProvider>();
         collection.AddHostedService<PreOrderConsumer>();
+        collection.AddHostedService<OrdersEventsConsumer>();
         collection.AddSingleton<INewOrderProducer, NewOrderProducer>();
 
         return collection;

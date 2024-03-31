@@ -16,9 +16,13 @@ internal class NewOrderProducer : INewOrderProducer
             new JsonStringEnumConverter()
         }
     };
+    private readonly ILogger<NewOrderProducer> _logger;
 
-    public NewOrderProducer(IKafkaDataProvider<long, string> kafkaDataProvider)
+    public NewOrderProducer(
+        IKafkaDataProvider<long, string> kafkaDataProvider,
+        ILogger<NewOrderProducer> logger)
     {
+        _logger = logger;
         _kafkaDataProvider = kafkaDataProvider;
     }
 
@@ -27,6 +31,7 @@ internal class NewOrderProducer : INewOrderProducer
         await Task.Yield();
 
         var tasks = new List<Task<DeliveryResult<long, string>>>(validatedPreOrders.Count);
+        _logger.LogInformation("Started producing into topic {TopicName}", TopicName);
 
         foreach (var orderId in validatedPreOrders)
         {
@@ -43,7 +48,15 @@ internal class NewOrderProducer : INewOrderProducer
             var task = _kafkaDataProvider.Producer.ProduceAsync(TopicName, message, token);
             tasks.Add(task);
         }
+        try
+        {
+            await Task.WhenAll(tasks);
+            _logger.LogInformation("Produced succesfully into topic {TopicName}", TopicName);
 
-        await Task.WhenAll(tasks);
+        }
+        catch (Exception ex) 
+        {
+            _logger.LogError(ex, "Got exception whule producing into topic {TopicName}", TopicName);
+        }
     }
 }

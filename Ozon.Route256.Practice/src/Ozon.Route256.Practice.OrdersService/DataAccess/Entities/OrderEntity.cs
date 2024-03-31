@@ -21,6 +21,7 @@ public enum OrderStatusEntity
     Delivered = 2,
     Lost = 3,
     Cancelled = 4,
+    PreOrder = 100,
 }
 
 public enum OrderTypeEntity

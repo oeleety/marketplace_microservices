@@ -36,7 +36,7 @@ public class CachedCustomersClient
             {
                 customer = await _customersService.GetCustomerByIdAsync(id, cancellationToken);
                 _logger.LogInformation("Found a customer with id = {id} in customerService. Will add to the cache.", id);
-                await _customersCache.AddAsync(customer, cancellationToken); // todo test it
+                await _customersCache.AddAsync(customer, cancellationToken);
                 _logger.LogInformation("Added a customer with id = {id} to cache.", id);
 
             }
@@ -61,7 +61,7 @@ public class CachedCustomersClient
             _logger.LogInformation("Couldn't find a customer with id = {id} in cache. Gonna find in the customer service", id);
             var customer = await _customersService.GetCustomerByIdAsync(id, cancellationToken);
             _logger.LogInformation("Found a customer with id = {id} in customerService. Will add to the cache.", id);
-            await _customersCache.AddAsync(customer, cancellationToken); // todo test it
+            await _customersCache.AddAsync(customer, cancellationToken);
             _logger.LogInformation("Added a customer with id = {id} to cache.", id);
         }
     }

@@ -26,7 +26,7 @@ internal sealed class OrderDataProvider : IKafkaDataProvider<long, string>
 
         var producerConfig = new ProducerConfig
         {
-            BootstrapServers = "localhost:29091",
+            BootstrapServers = settings.Value.Servers,
         };
 
         ProducerBuilder<long, string> producerBuilder = new(producerConfig);

@@ -1,5 +1,4 @@
-﻿
-namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
+﻿namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
 
 public interface INewOrderProducer
 {
