@@ -10,16 +10,23 @@ public static partial class ServiceCollectionExtensions
         this IServiceCollection serviceCollection,
         IConfiguration configuration)
     {
-        serviceCollection.AddGrpcClient<LogisticsSimulatorService.LogisticsSimulatorServiceClient>(option =>
-        {
-            option.Address = new Uri(configuration.TryGetValue("ROUTE256_LS_ADDRESS"));
-        });
-        serviceCollection.AddGrpcClient<Customers.CustomersClient>(option =>
-        {
-            option.Address = new Uri(configuration.TryGetValue("ROUTE256_CUSTOMER_ADDRESS"));
-        });
+        serviceCollection.AddGrpcClient<LogisticsSimulatorService.LogisticsSimulatorServiceClient>(configuration, "ROUTE256_LS_ADDRESS");
+        serviceCollection.AddGrpcClient<Customers.CustomersClient>(configuration, "ROUTE256_CUSTOMER_ADDRESS");
         serviceCollection.AddSingleton<LogisticsSimulatorClient>();
         serviceCollection.AddSingleton<CustomersServiceClient>();
+
+        return serviceCollection;
+    }
+
+    private static IServiceCollection AddGrpcClient<TClient>(
+        this IServiceCollection serviceCollection,
+        IConfiguration configuration,
+        string key) where TClient : class
+    {
+        serviceCollection.AddGrpcClient<TClient>(option =>
+        {
+            option.Address = new Uri(configuration.TryGetValue(key));
+        });
 
         return serviceCollection;
     }
