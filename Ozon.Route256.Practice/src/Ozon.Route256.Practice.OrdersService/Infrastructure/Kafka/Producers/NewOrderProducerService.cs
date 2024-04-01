@@ -4,11 +4,11 @@ using Confluent.Kafka;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
 
-internal class NewOrderProducer : INewOrderProducer
+internal class NewOrderProducerService : INewOrderProducer
 {
     private const string TopicName = "new_orders";
 
-    private readonly IKafkaDataProvider<long, string> _kafkaDataProvider;
+    private readonly IKafkaProducer<long, string> _kafkaProducer;
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         Converters =
@@ -16,14 +16,14 @@ internal class NewOrderProducer : INewOrderProducer
             new JsonStringEnumConverter()
         }
     };
-    private readonly ILogger<NewOrderProducer> _logger;
+    private readonly ILogger<NewOrderProducerService> _logger;
 
-    public NewOrderProducer(
-        IKafkaDataProvider<long, string> kafkaDataProvider,
-        ILogger<NewOrderProducer> logger)
+    public NewOrderProducerService(
+        IKafkaProducer<long, string> kafkaProducer,
+        ILogger<NewOrderProducerService> logger)
     {
         _logger = logger;
-        _kafkaDataProvider = kafkaDataProvider;
+        _kafkaProducer = kafkaProducer;
     }
 
     public async Task ProduceAsync(IReadOnlyCollection<long> validatedPreOrders, CancellationToken token)
@@ -45,7 +45,7 @@ internal class NewOrderProducer : INewOrderProducer
                 Key = key,
                 Value = value
             };
-            var task = _kafkaDataProvider.Producer.ProduceAsync(TopicName, message, token);
+            var task = _kafkaProducer.Producer.ProduceAsync(TopicName, message, token);
             tasks.Add(task);
         }
         try

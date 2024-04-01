@@ -1,24 +1,27 @@
 ﻿using Confluent.Kafka;
+using Microsoft.Extensions.Options;
+using Ozon.Route256.Practice.OrdersService.Configuration;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundService
 {
-    private readonly IKafkaDataProvider<TKey, TValue> _kafkaDataProvider;
     private readonly ILogger _logger;
     protected readonly IServiceScope _scope;
+    protected readonly IOptions<KafkaSettings> _kafkaSettings;
 
     protected ConsumerBackgroundService(
         IServiceProvider serviceProvider,
-        IKafkaDataProvider<TKey, TValue> kafkaDataProvider,
+        IOptions<KafkaSettings> kafkaSettings,
         ILogger logger)
     {
-        _kafkaDataProvider = kafkaDataProvider;
         _logger = logger;
         _scope = serviceProvider.CreateScope();
+        _kafkaSettings = kafkaSettings;
     }
 
     protected abstract string TopicName { get; }
+    protected abstract IKafkaConsumer<TKey, TValue> KafkaConsumer { get; }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -26,19 +29,20 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
 
         if (stoppingToken.IsCancellationRequested)
         {
+            KafkaConsumer.Consumer.Close();
             return;
         }
 
-        _kafkaDataProvider.Consumer.Subscribe(TopicName);
+        KafkaConsumer.Consumer.Subscribe(TopicName);
 
-        _logger.LogInformation("Start consumimg topic {Topic}", TopicName);
+        _logger.LogInformation("{KafkaConsumer.Consumer.Name} start consumimg topic {Topic}", KafkaConsumer.Consumer.Name, TopicName);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             await ConsumeAsync(stoppingToken);
         }
-
-        _kafkaDataProvider.Consumer.Unsubscribe();
+        KafkaConsumer.Consumer.Close();
+        KafkaConsumer.Consumer.Unsubscribe();
 
         _logger.LogInformation("Stop consumer topic {Topic}", TopicName);
     }
@@ -49,7 +53,7 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
 
         try
         {
-            message = _kafkaDataProvider.Consumer.Consume(TimeSpan.FromMilliseconds(100));
+            message = KafkaConsumer.Consumer.Consume(TimeSpan.FromMilliseconds(100));
 
             if (message is null)
             {
@@ -58,7 +62,7 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
             }
 
             await HandleAsync(message, cancellationToken);
-            _kafkaDataProvider.Consumer.Commit();
+            KafkaConsumer.Consumer.Commit();
         }
         catch (Exception exc)
         {
@@ -73,6 +77,7 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
 
     public override void Dispose()
     {
+        KafkaConsumer?.Consumer?.Close();
         _scope.Dispose();
         base.Dispose();
     }

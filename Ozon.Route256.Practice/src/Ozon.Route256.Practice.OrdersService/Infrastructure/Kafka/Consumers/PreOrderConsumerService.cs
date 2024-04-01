@@ -9,17 +9,19 @@ using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Bogus;
+using Ozon.Route256.Practice.OrdersService.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
-public class PreOrderConsumer : ConsumerBackgroundService<long, string>
+public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, string>
 {
     private const int DeliveryArea = 5000000; // meters
 
     private static ConcurrentDictionary<string, (double latitude, double Longitude)> _depotsByRegion;
     private static readonly Faker Faker = new();
 
-    private readonly ILogger<PreOrderConsumer> _logger;
+    private readonly ILogger<PreOrderConsumerService> _logger;
     private readonly CachedCustomersClient _cachedCustomersClient;
     private readonly IRedisOrdersRepository _redisOrdersRepository;
     private readonly IOrdersRepository _ordersRepository;
@@ -35,13 +37,15 @@ public class PreOrderConsumer : ConsumerBackgroundService<long, string>
         }
     };
 
-    public PreOrderConsumer(
+    public PreOrderConsumerService(
         IServiceProvider serviceProvider,
-        IKafkaDataProvider<long, string> kafkaDataProvider,
         INewOrderProducer producer,
         CustomersServiceClient customersService,
-        ILogger<PreOrderConsumer> logger)
-        : base(serviceProvider, kafkaDataProvider, logger)
+        IOptions<KafkaSettings> kafkaSettings,
+        ILogger<PreOrderConsumerService> logger)
+        : base(serviceProvider,
+            kafkaSettings,
+            logger)
     {
         _logger = logger;
         _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
@@ -49,9 +53,11 @@ public class PreOrderConsumer : ConsumerBackgroundService<long, string>
         _ordersRepository = _scope.ServiceProvider.GetRequiredService<IOrdersRepository>();
         _producer = producer;
         _customersServiceTest = customersService;
+        KafkaConsumer = new KafkaConsumer(_kafkaSettings, "pre_orders_group");
     }
 
     protected override string TopicName { get; } = "pre_orders";
+    protected override IKafkaConsumer<long, string> KafkaConsumer { get; }
 
     protected override async Task HandleAsync(
         ConsumeResult<long, string> message, 

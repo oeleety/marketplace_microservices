@@ -3,12 +3,14 @@ using System.Text.Json;
 using Confluent.Kafka;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Models;
+using Ozon.Route256.Practice.OrdersService.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
-public class OrdersEventsConsumer : ConsumerBackgroundService<long, string>
+public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long, string>
 {
-    private readonly ILogger<OrdersEventsConsumer> _logger;
+    private readonly ILogger<OrdersEventsConsumerService> _logger;
     private readonly IRedisOrdersRepository _redisOrdersRepository;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -19,24 +21,26 @@ public class OrdersEventsConsumer : ConsumerBackgroundService<long, string>
         }
     };
 
-    public OrdersEventsConsumer(
+    public OrdersEventsConsumerService(
         IServiceProvider serviceProvider,
-        IKafkaDataProvider<long, string> kafkaDataProvider,
-        ILogger<OrdersEventsConsumer> logger)
-        : base(serviceProvider, kafkaDataProvider, logger)
+        IOptions<KafkaSettings> kafkaSettings,
+        ILogger<OrdersEventsConsumerService> logger)
+        : base(serviceProvider, kafkaSettings, logger)
     {
         _logger = logger;
         _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
+        KafkaConsumer = new KafkaConsumer(_kafkaSettings, "orders_events_group");
     }
 
     protected override string TopicName { get; } = "orders_events";
+    protected override IKafkaConsumer<long, string> KafkaConsumer { get; }
 
     protected override async Task HandleAsync(
         ConsumeResult<long, string> message, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        _logger.LogInformation("Handling messages from kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
+        _logger.LogInformation("Handling messages from Kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
 
         var value = message.Message.Value;
         var orderEvent= JsonSerializer.Deserialize<OrderEvent>(value, _jsonSerializerOptions);
@@ -50,7 +54,7 @@ public class OrdersEventsConsumer : ConsumerBackgroundService<long, string>
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var updOrder = order with { OrderStatus = From(orderEvent.NewState) };
+            var updOrder = order with { OrderStatus = From(orderEvent.OrderState) };
             await _redisOrdersRepository.UpdateAsync(updOrder, cancellationToken);
             _logger.LogInformation("Order id = {orderEvent.Id} status updated", orderEvent.Id);
         }

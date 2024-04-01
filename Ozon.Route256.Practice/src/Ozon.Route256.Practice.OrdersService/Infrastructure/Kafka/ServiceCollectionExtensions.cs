@@ -7,10 +7,10 @@ public static partial class ServiceCollectionExtensions
 {
     public static IServiceCollection AddKafka(this IServiceCollection collection)
     {
-        collection.AddSingleton<IKafkaDataProvider<long, string>, OrderDataProvider>();
-        collection.AddHostedService<PreOrderConsumer>();
-        collection.AddHostedService<OrdersEventsConsumer>();
-        collection.AddSingleton<INewOrderProducer, NewOrderProducer>();
+        collection.AddSingleton<IKafkaProducer<long, string>, KafkaProducer>();
+        collection.AddHostedService<PreOrderConsumerService>();
+        collection.AddHostedService<OrdersEventsConsumerService>();
+        collection.AddSingleton<INewOrderProducer, NewOrderProducerService>();
 
         return collection;
     }
