@@ -22,11 +22,11 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     private static readonly Faker Faker = new();
 
     private readonly ILogger<PreOrderConsumerService> _logger;
-    private readonly CachedCustomersClient _cachedCustomersClient;
-    private readonly IRedisOrdersRepository _redisOrdersRepository;
-    private readonly IOrdersRepository _ordersRepository;
     private readonly INewOrderProducer _producer;
     private readonly CustomersServiceClient _customersServiceTest;
+    private CachedCustomersClient _cachedCustomersClient;
+    private IRedisOrdersRepository _redisOrdersRepository;
+    private IOrdersRepository _ordersRepository;
     private bool _isCustomersFilledTest = false;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -48,9 +48,6 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             logger)
     {
         _logger = logger;
-        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
-        _cachedCustomersClient = _scope.ServiceProvider.GetRequiredService<CachedCustomersClient>();
-        _ordersRepository = _scope.ServiceProvider.GetRequiredService<IOrdersRepository>();
         _producer = producer;
         _customersServiceTest = customersService;
         KafkaConsumer = new KafkaConsumer(_kafkaSettings, "pre_orders_group");
@@ -60,10 +57,16 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     protected override IKafkaConsumer<long, string> KafkaConsumer { get; }
 
     protected override async Task HandleAsync(
+        IServiceProvider serviceProvider,
         ConsumeResult<long, string> message, 
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        _redisOrdersRepository = serviceProvider.GetRequiredService<IRedisOrdersRepository>();
+        _cachedCustomersClient = serviceProvider.GetRequiredService<CachedCustomersClient>();
+        _ordersRepository = serviceProvider.GetRequiredService<IOrdersRepository>();
+
         _logger.LogInformation("Handling messages from kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
         var value = message.Message.Value;
         var preOrder = JsonSerializer.Deserialize<PreOrder>(value, _jsonSerializerOptions);
@@ -199,12 +202,10 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
                    Math.Cos(dLat1) * Math.Cos(dLat2) *
                    Math.Pow(Math.Sin(dLon / 2.0), 2.0);
 
-        // Intermediate result c (great circle distance in Radians).
-        double c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a));
+        double greatCircleDist = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a)); //in Radians
 
-        // Distance.
         const double kEarthRadiusMs = 6376500;
-        double dDistance = kEarthRadiusMs * c;
+        double dDistance = kEarthRadiusMs * greatCircleDist;
 
         return dDistance;
     }

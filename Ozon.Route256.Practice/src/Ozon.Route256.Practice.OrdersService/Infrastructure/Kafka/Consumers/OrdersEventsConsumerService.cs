@@ -11,8 +11,6 @@ namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long, string>
 {
     private readonly ILogger<OrdersEventsConsumerService> _logger;
-    private readonly IRedisOrdersRepository _redisOrdersRepository;
-
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         Converters =
@@ -20,6 +18,7 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
             new JsonStringEnumConverter()
         }
     };
+    private IRedisOrdersRepository _redisOrdersRepository;
 
     public OrdersEventsConsumerService(
         IServiceProvider serviceProvider,
@@ -28,7 +27,6 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
         : base(serviceProvider, kafkaSettings, logger)
     {
         _logger = logger;
-        _redisOrdersRepository = _scope.ServiceProvider.GetRequiredService<IRedisOrdersRepository>();
         KafkaConsumer = new KafkaConsumer(_kafkaSettings, "orders_events_group");
     }
 
@@ -36,9 +34,12 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
     protected override IKafkaConsumer<long, string> KafkaConsumer { get; }
 
     protected override async Task HandleAsync(
-        ConsumeResult<long, string> message, CancellationToken cancellationToken)
+        IServiceProvider serviceProvider,
+        ConsumeResult<long, string> message, 
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _redisOrdersRepository = serviceProvider.GetRequiredService<IRedisOrdersRepository>();
 
         _logger.LogInformation("Handling messages from Kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
 

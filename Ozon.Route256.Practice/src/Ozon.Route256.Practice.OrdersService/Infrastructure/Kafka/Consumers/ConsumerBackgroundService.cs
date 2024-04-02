@@ -6,18 +6,18 @@ namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundService
 {
-    private readonly ILogger _logger;
-    protected readonly IServiceScope _scope;
     protected readonly IOptions<KafkaSettings> _kafkaSettings;
+    private readonly ILogger _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     protected ConsumerBackgroundService(
         IServiceProvider serviceProvider,
         IOptions<KafkaSettings> kafkaSettings,
         ILogger logger)
     {
-        _logger = logger;
-        _scope = serviceProvider.CreateScope();
         _kafkaSettings = kafkaSettings;
+        _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     protected abstract string TopicName { get; }
@@ -39,15 +39,18 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ConsumeAsync(stoppingToken);
+            using var scope = _serviceProvider.CreateScope();
+
+            await ConsumeAsync(scope.ServiceProvider, stoppingToken);
         }
+
         KafkaConsumer.Consumer.Close();
         KafkaConsumer.Consumer.Unsubscribe();
 
         _logger.LogInformation("Stop consumer topic {Topic}", TopicName);
     }
 
-    private async Task ConsumeAsync(CancellationToken cancellationToken)
+    private async Task ConsumeAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
         ConsumeResult<TKey, TValue>? message = null;
 
@@ -61,7 +64,7 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
                 return;
             }
 
-            await HandleAsync(message, cancellationToken);
+            await HandleAsync(serviceProvider, message, cancellationToken);
             KafkaConsumer.Consumer.Commit();
         }
         catch (Exception exc)
@@ -73,12 +76,11 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
         }
     }
 
-    protected abstract Task HandleAsync(ConsumeResult<TKey, TValue> message, CancellationToken cancellationToken);
+    protected abstract Task HandleAsync(IServiceProvider serviceProvider, ConsumeResult<TKey, TValue> message, CancellationToken cancellationToken);
 
     public override void Dispose()
     {
         KafkaConsumer?.Consumer?.Close();
-        _scope.Dispose();
         base.Dispose();
     }
 }
