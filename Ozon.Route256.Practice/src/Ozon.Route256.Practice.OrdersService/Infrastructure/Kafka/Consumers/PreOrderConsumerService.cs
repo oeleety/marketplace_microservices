@@ -18,7 +18,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
 {
     private const int DeliveryArea = 5000000; // meters
 
-    private static ConcurrentDictionary<string, (double latitude, double Longitude)> _depotsByRegion;
+    private static ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion;
     private static readonly Faker Faker = new();
 
     private readonly ILogger<PreOrderConsumerService> _logger;
@@ -79,7 +79,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             }
             _isCustomersFilledTest = true;
         }
-        var customerId = new Random().Next(1, count + 1);// preOrder.Customer.Id
+        var customerId = Random.Shared.Next(1, count + 1);// preOrder.Customer.Id
         var customer = await _cachedCustomersClient.GetCustomerByIdAsync(customerId, cancellationToken);
         if (customer is null)
         {
@@ -115,7 +115,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
         cancellationToken.ThrowIfCancellationRequested();
 
         var region = preOrder.Customer.Address.Region;
-        if (!_depotsByRegion.TryGetValue(region, out (double latitude, double Longitude) depot))
+        if (!_depotsByRegion.TryGetValue(region, out (double latitude, double longitude) depot))
         {
             var rand = new Random();
             depot = _depotsByRegion.ElementAt(rand.Next(0, _depotsByRegion.Count)).Value; // todo for testing purposes 
@@ -167,19 +167,51 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     /// <returns></returns>
     private static double GetDistance((double latitude, double longitude) address1, (double latitude, double longitude) address2)
     {
+        //  The Haversine formula according to Dr. Math.
+        //  http://mathforum.org/library/drmath/view/51879.html
+
+        //  dlon = lon2 - lon1
+        //  dlat = lat2 - lat1
+        //  a = (sin(dlat/2))^2 + cos(lat1) * cos(lat2) * (sin(dlon/2))^2
+        //  c = 2 * atan2(sqrt(a), sqrt(1-a)) 
+        //  d = R * c
+
+        //  Where
+        //    * dlon is the change in longitude
+        //    * dlat is the change in latitude
+        //    * c is the great circle distance in Radians.
+        //    * R is the radius of a spherical Earth.
+        //    * The locations of the two points in 
+        //        spherical coordinates (longitude and 
+        //        latitude) are lon1,lat1 and lon2, lat2.
+
         var oneDegree = Math.PI / 180.0;
-        var d1 = address1.latitude * oneDegree;
-        var num1 = address1.longitude * oneDegree;
-        var d2 = address2.latitude * oneDegree;
-        var num2 = address2.longitude * oneDegree - num1;
-        var d3 = Math.Pow(Math.Sin((d2 - d1) / 2.0), 2.0) + Math.Cos(d1) * Math.Cos(d2) * Math.Pow(Math.Sin(num2 / 2.0), 2.0);
-        var earthR = 6376500.0;
-        return earthR * (2.0 * Math.Atan2(Math.Sqrt(d3), Math.Sqrt(1.0 - d3)));
+        var dLat1 = address1.latitude * oneDegree;
+        var dLon1 = address1.longitude * oneDegree;
+        var dLat2 = address2.latitude * oneDegree;
+        var dLon2 = address2.longitude * oneDegree;
+
+        double dLon = dLon2 - dLon1;
+        double dLat = dLat2 - dLat1;
+
+        // Intermediate result a.
+        double a = Math.Pow(Math.Sin(dLat / 2.0), 2.0) +
+                   Math.Cos(dLat1) * Math.Cos(dLat2) *
+                   Math.Pow(Math.Sin(dLon / 2.0), 2.0);
+
+        // Intermediate result c (great circle distance in Radians).
+        double c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a));
+
+        // Distance.
+        const double kEarthRadiusMs = 6376500;
+        double dDistance = kEarthRadiusMs * c;
+
+        return dDistance;
     }
 
     private static Practice.Proto.Customer CreateRandomCustomer(int id = -1)
     {
-        var adresses = Enumerable.Range(0, Faker.Random.Int(1, 3)).
+        var addresses = Enumerable.Range(0, Faker.Random.Int(1, 3)).
                 Select(_ => new Practice.Proto.Address
                 {
                     Apartment = Faker.Random.Int(9, 999).ToString(),
@@ -197,8 +229,8 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             LastName = Faker.Name.LastName(),
             MobileNumber = Faker.Phone.PhoneNumber(),
             Email = Faker.Person.Email,
-            Addressed = { adresses },
-            DefaultAddress = adresses.First()
+            Addressed = { addresses },
+            DefaultAddress = addresses.First()
         };
     }
 }

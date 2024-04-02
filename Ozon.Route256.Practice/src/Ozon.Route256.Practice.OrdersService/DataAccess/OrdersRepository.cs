@@ -9,7 +9,7 @@ internal class OrdersRepository : IOrdersRepository
 {
     private static readonly ConcurrentDictionary<int, RegionEntity> _regions = new();
     private static readonly ConcurrentDictionary<long, OrderEntity> _orders = new();
-    private static readonly ConcurrentDictionary<string, (double latitude, double Longitude)> _depotsByRegion = new();
+    private static readonly ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion = new();
     private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
         OrderStatusEntity.Cancelled,
@@ -67,7 +67,7 @@ internal class OrdersRepository : IOrdersRepository
         return Task.FromResult(_regions.Values.ToArray());
     }
 
-    public Task<ConcurrentDictionary<string, (double latitude, double Longitude)>> 
+    public Task<ConcurrentDictionary<string, (double latitude, double longitude)>> 
         GetRegionsWithDepots(CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();

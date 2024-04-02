@@ -34,7 +34,6 @@ public sealed class Startup
             .AddInfrastructure(_configuration)
             .AddRepositories()
             .AddCachedClients();
-
     }
 
     public void Configure(IApplicationBuilder applicationBuilder)
