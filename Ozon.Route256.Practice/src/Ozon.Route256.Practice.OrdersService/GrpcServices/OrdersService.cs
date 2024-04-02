@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Ozon.Route256.Practice.OrdersService.CachedClients;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
@@ -11,17 +12,20 @@ namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
 public sealed class OrdersService : Orders.OrdersBase
 {
     private readonly IOrdersRepository _repository;
+    private readonly IRedisOrdersRepository _redisRepository;
     private readonly LogisticsSimulatorClient _logisticsService;
-    private readonly CustomersServiceClient _customersService;
+    private readonly CachedCustomersClient _cachedCustomersClient;
 
     public OrdersService(
         IOrdersRepository repository,
         LogisticsSimulatorClient logisticsService,
-        CustomersServiceClient customersService)
+        CachedCustomersClient cachedCustomersClients,
+        IRedisOrdersRepository redisRepository)
     {
         _repository = repository;
         _logisticsService = logisticsService;
-        _customersService = customersService;
+        _cachedCustomersClient = cachedCustomersClients;
+        _redisRepository = redisRepository;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
@@ -30,11 +34,12 @@ public sealed class OrdersService : Orders.OrdersBase
     {
         await _repository.ThrowIfCancelProhibitedAsync(request.Id, context.CancellationToken);
         var cancelResult = await _logisticsService.CancelOrderAsync(request.Id);
-        if(cancelResult is null || cancelResult.Success)
+        if (cancelResult is null || cancelResult.Success)
         {
             throw new UnprocessableException($"Cannot cancel order with id={request.Id}");
         }
-        await _repository.CancelOrderAsync(request.Id, context.CancellationToken);
+        await _redisRepository.CancelOrderAsync(request.Id, context.CancellationToken);
+
         return new CancelOrderResponse
         {
             Success = true
@@ -45,7 +50,7 @@ public sealed class OrdersService : Orders.OrdersBase
         GetOrderStatusRequest request, 
         ServerCallContext context)
     {
-        var status = await _repository.GetOrderStatusAsync(request.Id, context.CancellationToken);
+        var status = await _redisRepository.GetOrderStatusAsync(request.Id, context.CancellationToken);
         return new GetOrderStatusResponse { Status = From(status) };
     }
 
@@ -83,10 +88,11 @@ public sealed class OrdersService : Orders.OrdersBase
     {
         try
         {
-            var customer = await _customersService.GetCustomerByIdAsync(request.CustomerId);
+            var id = request.CustomerId;
+            await _cachedCustomersClient.EnsureExistsAsync(id, context.CancellationToken);
         }
         catch (RpcException ex) when (ex.Status.StatusCode == StatusCode.NotFound)
-        {
+        {   
             throw new InvalidArgumentException(ex.Status.Detail);
         }
 

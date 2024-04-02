@@ -7,16 +7,17 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-COPY ["Ozon.Route256.Practice.OrdersService.csproj", "src/Ozon.Route256.Practice.OrdersService/"]
-RUN dotnet restore "src/Ozon.Route256.Practice.OrdersService/./Ozon.Route256.Practice.OrdersService.csproj"
-WORKDIR "/src/Ozon.Route256.Practice.OrdersService"
+WORKDIR Ozon.Route256.Practice.OrdersService/src
+COPY ["Ozon.Route256.Practice.OrdersService/Ozon.Route256.Practice.OrdersService.csproj", "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService/"]
+COPY ["Ozon.Route256.Practice.Shared/Ozon.Route256.Practice.Shared.csproj", "Ozon.Route256.Practice.Shared/src/Ozon.Route256.Practice.Shared/"]
+RUN dotnet restore "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService/./Ozon.Route256.Practice.OrdersService.csproj"
+WORKDIR "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService"
 COPY . .
-RUN dotnet build "./Ozon.Route256.Practice.OrdersService.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./Ozon.Route256.Practice.OrdersService/Ozon.Route256.Practice.OrdersService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Ozon.Route256.Practice.OrdersService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Ozon.Route256.Practice.OrdersService/Ozon.Route256.Practice.OrdersService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

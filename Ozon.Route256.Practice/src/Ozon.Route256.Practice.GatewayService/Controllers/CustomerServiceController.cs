@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Ozon.Route256.Practice.Proto;
 
 namespace Ozon.Route256.Practice.GatewayService.Controllers;
 

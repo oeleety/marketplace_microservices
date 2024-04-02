@@ -9,7 +9,10 @@
         "ROUTE256_SD_ADDRESS": "http://localhost:6081",
         "ROUTE256_LS_ADDRESS": "http://localhost:80",
         "ROUTE256_CUSTOMER_ADDRESS": "http://localhost:5010",
-        "ROUTE256_GRPC_PORT": "5005"
+        "ROUTE256_GRPC_PORT": "5005",
+        "ROUTE256_KAFKA_BROKERS": "localhost:29091",
+        "ROUTE256_REDIS": "localhost"
+
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5067"
