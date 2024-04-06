@@ -96,12 +96,16 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
             var orderByString = sortColumn switch
             {
                 ValueOrderDal.None => "",
-                ValueOrderDal.Region => $"order by r.name {sort} ",
-                ValueOrderDal.Status => $"order by o.status {sort} ",
+                ValueOrderDal.Region => $"order by o.region_name, o.id {sort} ",
+                ValueOrderDal.Status => $"order by o.status, o.id {sort} ",
 
                 _ => throw new ArgumentOutOfRangeException(nameof(sortColumn), sortColumn, null)
             };
             sql += orderByString;
+        }
+        else
+        {
+            sql += "order by o.id ";
         }
         if (filterOptions.Limit != -1 && filterOptions.Offset != -1)
         {
