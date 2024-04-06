@@ -1,9 +1,8 @@
-﻿using System.Collections.Concurrent;
-using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
+﻿using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 
 namespace Ozon.Route256.Practice.OrdersService.DataAccess;
 
-public interface IOrdersRepository
+public interface IOrdersRepositoryInMemory
 {
     Task CancelOrderAsync(long id, CancellationToken token = default);
 
@@ -12,9 +11,6 @@ public interface IOrdersRepository
     Task<OrderStatusEntity> GetOrderStatusAsync(long id, CancellationToken token = default);
 
     Task<RegionEntity[]> GetRegions(CancellationToken token = default);
-
-    Task<ConcurrentDictionary<string, (double latitude, double longitude)>>
-        GetRegionsWithDepots(CancellationToken token = default);
 
     Task<OrderEntity[]> GetOrders(
         RegionEntity[] regions, 
@@ -25,12 +21,12 @@ public interface IOrdersRepository
         CancellationToken token = default);
 
     Task<IReadOnlyCollection<OrderEntity>> GetOrdersByCustomer(
-        long customerId, 
+        int customerId, 
         DateTime sinceTimestamp, 
         PaginationEntity pagination, 
         CancellationToken token = default);
 
-    Task<Dictionary<int, OrdersStatisticEntity>> GetAggregatedOrdersByRegion(
+    Task<List<OrdersStatisticEntity>> GetAggregatedOrdersByRegion(
         RegionEntity[] regions, 
         DateTime sinceTimestamp, 
         CancellationToken token = default);

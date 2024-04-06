@@ -34,6 +34,8 @@ services:
             "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
             "ROUTE256_GRPC_PORT": "5005"
             "ROUTE256_REDIS": "redis"
+            "ROUTE256_OS_DB": "Server=orders-service-db;Port=5432;Database=orders-service;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
+            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
         depends_on:
             - broker-1
             - broker-2
@@ -53,6 +55,8 @@ services:
             "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
             "ROUTE256_GRPC_PORT": "5006"
             "ROUTE256_REDIS": "redis"
+            "ROUTE256_OS_DB": "Server=orders-service-db;Port=5432;Database=orders-service;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
+            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
         depends_on:
             - broker-1
             - broker-2

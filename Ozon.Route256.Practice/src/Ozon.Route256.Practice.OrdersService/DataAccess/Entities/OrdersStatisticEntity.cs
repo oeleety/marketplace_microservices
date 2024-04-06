@@ -3,6 +3,6 @@
 public record OrdersStatisticEntity(
     string Region,
     int OrdersCount,
-    double Price,
+    decimal Price,
     double Weight,
     int CustomersCount);

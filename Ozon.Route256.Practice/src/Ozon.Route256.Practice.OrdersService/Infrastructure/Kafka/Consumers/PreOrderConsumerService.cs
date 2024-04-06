@@ -17,8 +17,7 @@ namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, string>
 {
     private const int DeliveryArea = 5000000; // meters
-
-    private static ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion;
+    private static ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion = new();
     private static readonly Faker Faker = new();
 
     private readonly ILogger<PreOrderConsumerService> _logger;
@@ -26,7 +25,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     private readonly CustomersServiceClient _customersServiceTest;
     private CachedCustomersClient _cachedCustomersClient;
     private IRedisOrdersRepository _redisOrdersRepository;
-    private IOrdersRepository _ordersRepository;
+    private IOrdersRepositoryInMemory _ordersRepository;
     private bool _isCustomersFilledTest = false;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -65,7 +64,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
 
         _redisOrdersRepository = serviceProvider.GetRequiredService<IRedisOrdersRepository>();
         _cachedCustomersClient = serviceProvider.GetRequiredService<CachedCustomersClient>();
-        _ordersRepository = serviceProvider.GetRequiredService<IOrdersRepository>();
+        _ordersRepository = serviceProvider.GetRequiredService<IOrdersRepositoryInMemory>();
 
         _logger.LogInformation("Handling messages from kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
         var value = message.Message.Value;
@@ -111,9 +110,13 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
         PreOrder preOrder,
         CancellationToken cancellationToken)
     {
-        if (!_depotsByRegion?.Any() ?? true)
+        if (!_depotsByRegion.Any())
         {
-            _depotsByRegion = await _ordersRepository.GetRegionsWithDepots(cancellationToken);
+            RegionEntity[] regions = await _ordersRepository.GetRegions(cancellationToken);
+            foreach(var r in regions)
+            {
+                _depotsByRegion.TryAdd(r.Name, r.Depot);
+            }
         }
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -142,7 +145,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             preOrder.Goods.Sum(g => g.Price),
             preOrder.Goods.Sum(g => g.Weight),
             DateTime.UtcNow,
-            new RegionEntity(1, preOrder.Customer.Address.Region) // todo change contract to just a name 
+            new RegionEntity(preOrder.Customer.Address.Region)
         );
 
     private static OrderTypeEntity From(OrderSource source) => source switch

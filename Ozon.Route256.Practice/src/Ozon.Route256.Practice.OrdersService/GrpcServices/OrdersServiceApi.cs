@@ -1,45 +1,25 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Ozon.Route256.Practice.OrdersService.CachedClients;
-using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
-using Ozon.Route256.Practice.OrdersService.Exceptions;
-using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Ozon.Route256.Practice.OrdersService.Proto;
 
 namespace Ozon.Route256.Practice.OrdersService.GrpcServices;
 
-public sealed class OrdersService : Orders.OrdersBase
+public sealed class OrdersServiceApi : Orders.OrdersBase
 {
-    private readonly IOrdersRepository _repository;
-    private readonly IRedisOrdersRepository _redisRepository;
-    private readonly LogisticsSimulatorClient _logisticsService;
-    private readonly CachedCustomersClient _cachedCustomersClient;
+    private readonly Bll.IOrdersService _ordersService;
 
-    public OrdersService(
-        IOrdersRepository repository,
-        LogisticsSimulatorClient logisticsService,
-        CachedCustomersClient cachedCustomersClients,
-        IRedisOrdersRepository redisRepository)
+    public OrdersServiceApi(
+        Bll.IOrdersService ordersService)
     {
-        _repository = repository;
-        _logisticsService = logisticsService;
-        _cachedCustomersClient = cachedCustomersClients;
-        _redisRepository = redisRepository;
+        _ordersService = ordersService;
     }
 
     public override async Task<CancelOrderResponse> CancelOrder(
         CancelOrderRequest request, 
         ServerCallContext context)
     {
-        await _repository.ThrowIfCancelProhibitedAsync(request.Id, context.CancellationToken);
-        var cancelResult = await _logisticsService.CancelOrderAsync(request.Id);
-        if (cancelResult is null || cancelResult.Success)
-        {
-            throw new UnprocessableException($"Cannot cancel order with id={request.Id}");
-        }
-        await _redisRepository.CancelOrderAsync(request.Id, context.CancellationToken);
-
+        await _ordersService.CancelOrderAsync(request.Id, context.CancellationToken);
         return new CancelOrderResponse
         {
             Success = true
@@ -50,7 +30,8 @@ public sealed class OrdersService : Orders.OrdersBase
         GetOrderStatusRequest request, 
         ServerCallContext context)
     {
-        var status = await _redisRepository.GetOrderStatusAsync(request.Id, context.CancellationToken);
+        var status = await _ordersService.GetOrderStatusAsync(
+            request.Id, context.CancellationToken);
         return new GetOrderStatusResponse { Status = From(status) };
     }
 
@@ -58,7 +39,7 @@ public sealed class OrdersService : Orders.OrdersBase
         GetRegionsRequest request, 
         ServerCallContext context)
     {
-        var regions = await _repository.GetRegions(context.CancellationToken);
+        var regions = await _ordersService.GetRegions(context.CancellationToken);
         var result = new GetRegionsResponse
         {
             Regions = { regions.Select(From).ToArray() }
@@ -67,15 +48,17 @@ public sealed class OrdersService : Orders.OrdersBase
         return result;
     }
 
-    public override async Task<GetOrdersResponse> GetOrders(GetOrdersRequest request, ServerCallContext context)
+    public override async Task<GetOrdersResponse> GetOrders(
+        GetOrdersRequest request, 
+        ServerCallContext context)
     {
-        var orders = await _repository.GetOrders(
+        var orders = await _ordersService.GetOrdersAsync(
             request.Regions.Select(From).ToArray(),
             From(request.OrderType),
             From(request.Pagination),
+            context.CancellationToken,
             From(request.SortOrder),
-            From(request.ValueOrder),
-            context.CancellationToken);
+            From(request.ValueOrder));
         return new GetOrdersResponse
         {
             Orders = { orders.Select(From).ToArray() }
@@ -86,17 +69,7 @@ public sealed class OrdersService : Orders.OrdersBase
         GetOrdersByCustomerRequest request, 
         ServerCallContext context)
     {
-        try
-        {
-            var id = request.CustomerId;
-            await _cachedCustomersClient.EnsureExistsAsync(id, context.CancellationToken);
-        }
-        catch (RpcException ex) when (ex.Status.StatusCode == StatusCode.NotFound)
-        {   
-            throw new InvalidArgumentException(ex.Status.Detail);
-        }
-
-        var orders = await _repository.GetOrdersByCustomer(
+        var orders = await _ordersService.GetOrdersByCustomer(
             request.CustomerId, 
             request.SinceTimestamp.ToDateTime(), 
             From(request.Pagination),
@@ -111,14 +84,14 @@ public sealed class OrdersService : Orders.OrdersBase
         GetAggregatedOrdersByRegionRequest request, 
         ServerCallContext context)
     {
-        var result = await _repository.GetAggregatedOrdersByRegion(
+        var result = await _ordersService.GetAggregatedOrdersByRegion(
             request.Regions.Select(From).ToArray(),
             request.SinceTimestamp.ToDateTime(),
             context.CancellationToken);
         
         return new GetAggregatedOrdersByRegionResponse
         {
-            StatisticByRegion = { result.ToDictionary(r => r.Key, r => From(r.Value)) }
+            StatisticByRegion = { result.Select(From).ToArray() }
         };
     }
 
@@ -132,7 +105,7 @@ public sealed class OrdersService : Orders.OrdersBase
         CustomerMobileNumber = order.CustomerMobileNumber,
         DeliveryAddress = From(order.DeliveryAddress),
         ItemsCount = order.ItemsCount,
-        Price = order.Price,
+        Price = (double)order.Price,
         Weight = order.Weight,
         Created = order.Created.ToTimestamp(),
         CreatedRegion = From(order.CreatedRegion),
@@ -151,11 +124,10 @@ public sealed class OrdersService : Orders.OrdersBase
 
     private static Region From(RegionEntity region) => new()
     {
-        Id = region.Id,
         Name = region.Name,
     };
 
-    private static RegionEntity From(Region region) => new(region.Id, region.Name);
+    private static RegionEntity From(Region region) => new(region.Name);
 
     private static PaginationEntity From(Pagination p) => new(p.Offset, p.Limit);
 
@@ -164,7 +136,7 @@ public sealed class OrdersService : Orders.OrdersBase
         Region = ordersStatisticEntity.Region,
         OrdersCount = ordersStatisticEntity.OrdersCount,
         Weight = ordersStatisticEntity.Weight,
-        Price = ordersStatisticEntity.Price,
+        Price = (double)ordersStatisticEntity.Price,
         CustomersCount = ordersStatisticEntity.CustomersCount,
     };
 

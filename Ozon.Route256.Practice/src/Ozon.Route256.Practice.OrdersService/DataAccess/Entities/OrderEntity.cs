@@ -9,10 +9,24 @@ public record OrderEntity(
     string CustomerMobileNumber,
     AddressEntity DeliveryAddress, 
     int ItemsCount, 
-    double Price, 
+    decimal Price, 
     double Weight, 
     DateTime Created, 
     RegionEntity CreatedRegion);
+
+public record OrderEntityBase(
+    long Id,
+    OrderStatusEntity OrderStatus,
+    OrderTypeEntity OrderType,
+    int CustomerId,
+    string CustomerFullName,
+    string CustomerMobileNumber,
+    int AddressId,
+    int ItemsCount,
+    decimal Price,
+    double Weight,
+    DateTime Created,
+    string RegionName);
 
 public enum OrderStatusEntity
 {

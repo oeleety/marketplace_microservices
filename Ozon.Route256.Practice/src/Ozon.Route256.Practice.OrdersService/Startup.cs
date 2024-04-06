@@ -5,6 +5,7 @@ using Ozon.Route256.Practice.Shared;
 using Ozon.Route256.Practice.OrdersService.Configuration;
 using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.CachedClients;
+using Ozon.Route256.Practice.OrdersService.Dal;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -28,12 +29,15 @@ public sealed class Startup
         });
         serviceCollection.AddSingleton<IDbStore, DbStore>();
         serviceCollection.AddHostedService<SdConsumerHostedService>();
+        serviceCollection.AddScoped<Bll.IOrdersService, Bll.OrdersService>();
         serviceCollection
             .AddSettings(_configuration)
             .AddGrpcClients(_configuration)
             .AddInfrastructure(_configuration)
+            .AddCachedClients()
+            .AddPg(_configuration, GetType().Assembly)
             .AddRepositories()
-            .AddCachedClients();
+            ;
     }
 
     public void Configure(IApplicationBuilder applicationBuilder)
@@ -43,7 +47,7 @@ public sealed class Startup
         applicationBuilder.UseSwaggerUI();
         applicationBuilder.UseEndpoints(endpointRouteBuilder =>
         {
-            endpointRouteBuilder.MapGrpcService<GrpcServices.OrdersService>();
+            endpointRouteBuilder.MapGrpcService<GrpcServices.OrdersServiceApi>();
             endpointRouteBuilder.MapGrpcReflectionService();
         });
     }
