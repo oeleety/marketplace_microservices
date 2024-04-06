@@ -39,7 +39,7 @@ public sealed class OrdersServiceApi : Orders.OrdersBase
         GetRegionsRequest request, 
         ServerCallContext context)
     {
-        var regions = await _ordersService.GetRegions(context.CancellationToken);
+        var regions = await _ordersService.GetRegionsAsync(context.CancellationToken);
         var result = new GetRegionsResponse
         {
             Regions = { regions.Select(From).ToArray() }
@@ -69,7 +69,7 @@ public sealed class OrdersServiceApi : Orders.OrdersBase
         GetOrdersByCustomerRequest request, 
         ServerCallContext context)
     {
-        var orders = await _ordersService.GetOrdersByCustomer(
+        var orders = await _ordersService.GetOrdersByCustomerAsync(
             request.CustomerId, 
             request.SinceTimestamp.ToDateTime(), 
             From(request.Pagination),
@@ -84,7 +84,7 @@ public sealed class OrdersServiceApi : Orders.OrdersBase
         GetAggregatedOrdersByRegionRequest request, 
         ServerCallContext context)
     {
-        var result = await _ordersService.GetAggregatedOrdersByRegion(
+        var result = await _ordersService.GetAggregatedOrdersByRegionAsync(
             request.Regions.Select(From).ToArray(),
             request.SinceTimestamp.ToDateTime(),
             context.CancellationToken);

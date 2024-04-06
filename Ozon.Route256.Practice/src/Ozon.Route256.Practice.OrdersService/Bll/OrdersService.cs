@@ -64,7 +64,7 @@ public class OrdersService : IOrdersService
         }
     }
 
-    public async Task<RegionEntity[]> GetRegions(
+    public async Task<RegionEntity[]> GetRegionsAsync(
         CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -128,7 +128,7 @@ public class OrdersService : IOrdersService
         }
     }
 
-    public async Task<IReadOnlyCollection<OrderEntity>> GetOrdersByCustomer(
+    public async Task<IReadOnlyCollection<OrderEntity>> GetOrdersByCustomerAsync(
         int customerId,
         DateTime sinceTimestamp,
         PaginationEntity pagination,
@@ -159,7 +159,7 @@ public class OrdersService : IOrdersService
         return orders.ToArray();
     }
 
-    public async Task<List<OrdersStatisticEntity>> GetAggregatedOrdersByRegion(
+    public async Task<List<OrdersStatisticEntity>> GetAggregatedOrdersByRegionAsync(
         RegionEntity[] reqRegions,
         DateTime sinceTimestamp,
         CancellationToken token)

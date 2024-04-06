@@ -36,7 +36,6 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
         command.Parameters.Add("id", id);
 
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, token);
-
         var result = await ReadOrdersAsync(reader, token);
         return result.FirstOrDefault();
     }

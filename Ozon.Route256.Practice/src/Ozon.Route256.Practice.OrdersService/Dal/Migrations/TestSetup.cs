@@ -24,13 +24,12 @@ namespace Ozon.Route256.Practice.OrdersService.Dal.Migrations
             
             insert into orders(id, status, type, customer_id, customer_full_name, customer_mobile_number, address_id, items_count, price, weight, created, region_name)
             values
-	            (1, 'created', 'api', 111, 'Oksana', '8977', 1, 10, 999, 1000, current_timestamp, 'spb'),
-	            (2, 'created', 'mobile', 111, 'Oksana', '8977', 1, 10, 999, 1000, current_timestamp, 'spb'),
-	            (3, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk'),
-	            (4, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk'),	
-	            (5, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk')
+                (1, 'created', 'api', 111, 'Oksana', '8977', 1, 10, 999, 1000, current_timestamp, 'spb'),
+                (2, 'created', 'mobile', 111, 'Oksana', '8977', 1, 10, 999, 1000, current_timestamp, 'spb'),
+                (3, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk'),
+                (4, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk'),	
+                (5, 'created', 'api', 112, 'Ok', '8977', 2, 2000, 99999, 1, current_timestamp, 'msk')
             ;";
-
             
         protected override string GetDownSql(
             IServiceProvider services) => "";
