@@ -26,7 +26,7 @@ create table regions(
 
 create type order_status as enum ('created', 'sent_to_customer', 'delivered', 'lost', 'cancelled', 'preorder');
 
- create type order_type as enum ('web', 'api', 'mobile');
+create type order_type as enum ('web', 'api', 'mobile');
 
 create table orders(
     id bigint primary key,
@@ -42,13 +42,13 @@ create table orders(
     created timestamp with time zone not null,
     region_name text not null,
 
-constraint fk_address
-    FOREIGN KEY(address_id) 
-    REFERENCES addresses(id),
+    constraint fk_address
+        FOREIGN KEY(address_id) 
+        REFERENCES addresses(id),
 
-constraint fk_region
-    FOREIGN KEY(region_name) 
-    REFERENCES regions(name)
+    constraint fk_region
+        FOREIGN KEY(region_name) 
+        REFERENCES regions(name)
 );
 ";
 

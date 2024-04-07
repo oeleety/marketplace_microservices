@@ -27,6 +27,8 @@ public static class ProgramExtension
             await host.RunAsync();
         }
         else
+        {
             await host.RunAsync();
+        }
     }
 }
