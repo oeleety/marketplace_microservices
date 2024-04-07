@@ -96,8 +96,8 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
             var orderByString = sortColumn switch
             {
                 ValueOrderDal.None => "",
-                ValueOrderDal.Region => $"order by o.region_name, o.id {sort} ",
-                ValueOrderDal.Status => $"order by o.status, o.id {sort} ",
+                ValueOrderDal.Region => $"order by o.region_name {sort}, o.id ",
+                ValueOrderDal.Status => $"order by o.status {sort}, o.id ",
 
                 _ => throw new ArgumentOutOfRangeException(nameof(sortColumn), sortColumn, null)
             };
