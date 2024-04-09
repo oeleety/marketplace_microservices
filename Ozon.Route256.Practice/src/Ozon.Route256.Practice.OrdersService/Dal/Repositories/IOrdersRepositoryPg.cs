@@ -5,7 +5,8 @@ namespace Ozon.Route256.Practice.OrdersService.Dal.Repositories;
 
 public interface IOrdersRepositoryPg
 {
-    Task<OrderDal?> FindAsync(long id, CancellationToken token);
-    Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync(OrderFilterOptions filterOptions, CancellationToken token);
+    Task CreateAsync(OrderDal order, CancellationToken token);
+    Task<OrderDal?> FindAsync(long id, CancellationToken token, bool internalRequest = false);
+    Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync(OrderFilterOptions filterOptions, CancellationToken token, bool internalRequest = false);
     Task UpdateStatusAsync(IEnumerable<long> ids, OrderStatus status, CancellationToken token);
 }

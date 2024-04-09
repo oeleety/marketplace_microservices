@@ -24,7 +24,7 @@ create table regions(
     depot_lat_lon point not null
 );
 
-create type order_status as enum ('created', 'sent_to_customer', 'delivered', 'lost', 'cancelled', 'preorder');
+create type order_status as enum ('created', 'sent_to_customer', 'delivered', 'lost', 'cancelled', 'pre_order');
 
 create type order_type as enum ('web', 'api', 'mobile');
 
@@ -38,7 +38,7 @@ create table orders(
     address_id integer not null,
     items_count integer not null, 
     price decimal not null, 
-    weight real not null,
+    weight numeric not null,
     created timestamp with time zone not null,
     region_name text not null,
 

@@ -1,8 +1,9 @@
-﻿using Grpc.Core;
+﻿using System.Transactions;
+using Grpc.Core;
+using NpgsqlTypes;
 using Ozon.Route256.Practice.OrdersService.CachedClients;
 using Ozon.Route256.Practice.OrdersService.Dal.Models;
 using Ozon.Route256.Practice.OrdersService.Dal.Repositories;
-using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
@@ -11,36 +12,60 @@ namespace Ozon.Route256.Practice.OrdersService.Bll;
 
 public class OrdersService : IOrdersService
 {
-    private readonly IOrdersRepositoryPg _ordersRepository;
-    private readonly IRedisOrdersRepository _redisRepository;
-    private readonly CachedCustomersClient _cachedCustomersClient;
-
-    private readonly IRegionsRepositoryPg _regionsRepository;
-    private readonly LogisticsSimulatorClient _logisticsService;
     private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
         OrderStatusEntity.Cancelled,
         OrderStatusEntity.Delivered
     };
+    private readonly CachedCustomersClient _cachedCustomersClient;
+    private readonly LogisticsSimulatorClient _logisticsService;
+    private readonly IRegionsRepositoryPg _regionsRepository;
+    private readonly IOrdersRepositoryPg _ordersRepository;
+    private readonly IAddressesRepositoryPg _addressesRepository;
 
     public OrdersService(
-        LogisticsSimulatorClient logisticsService,
-        IOrdersRepositoryPg ordersRepository,
         CachedCustomersClient cachedCustomersClients,
-        IRedisOrdersRepository redisRepository,
-        IRegionsRepositoryPg regionsRepository)
+        LogisticsSimulatorClient logisticsService,
+        IRegionsRepositoryPg regionsRepository,
+        IOrdersRepositoryPg ordersRepository,
+        IAddressesRepositoryPg addressesRepository)
     {
         _logisticsService = logisticsService;
         _cachedCustomersClient = cachedCustomersClients;
-        _redisRepository = redisRepository;
         _ordersRepository = ordersRepository;
         _regionsRepository = regionsRepository;
+        _addressesRepository = addressesRepository;
+    }
+
+    public async Task AddOrderAsync(
+        OrderEntity order,
+        CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+
+        using var ts = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions
+            {
+                IsolationLevel = IsolationLevel.ReadCommitted,
+                Timeout = TimeSpan.FromSeconds(5)
+            },
+            TransactionScopeAsyncFlowOption.Enabled);
+
+        var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.DeliveryAddress) }, token))
+            .First();
+
+        await _ordersRepository.CreateAsync(From(order, addressId), token);
+
+        ts.Complete();
     }
 
     public async Task CancelOrderAsync(long id,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
-        await ThrowIfCancelProhibitedAsync(id, token);
+        await ThrowIfCancelProhibitedAsync(id, token, internalRequest);
+
         var cancelResult = await _logisticsService.CancelOrderAsync(id);
         if (cancelResult is null || cancelResult.Success)
         {
@@ -49,19 +74,25 @@ public class OrdersService : IOrdersService
         await _ordersRepository.UpdateStatusAsync(new[] { id }, OrderStatus.Cancelled, token);
     }
 
-    public async Task<OrderStatusEntity> GetOrderStatusAsync(
+    public async Task UpdateOrderStatusAsync(
         long id,
+        OrderStatusEntity status,
         CancellationToken token)
     {
-        try
-        {
-            return await _redisRepository.GetOrderStatusAsync(id, token);
-        }
-        catch (NotFoundException)
-        {
-            var order = await FindOrderAsync(id, token);
-            return order.OrderStatus;
-        }
+        token.ThrowIfCancellationRequested();
+
+        await _ordersRepository.UpdateStatusAsync(new[] { id }, From(status), token);
+    }
+
+    public async Task<OrderStatusEntity> GetOrderStatusAsync(
+        long id,
+        CancellationToken token,
+        bool internalRequest = false)
+    {
+        token.ThrowIfCancellationRequested();
+
+        var order = await FindOrderAsync(id, token, internalRequest);
+        return order.OrderStatus;
     }
 
     public async Task<RegionEntity[]> GetRegionsAsync(
@@ -79,7 +110,8 @@ public class OrdersService : IOrdersService
         PaginationEntity pagination,
         CancellationToken token,
         SortOrderEntity sortOrder = SortOrderEntity.Asc,
-        ValueOrderEntity valueOrder = ValueOrderEntity.None)
+        ValueOrderEntity valueOrder = ValueOrderEntity.None,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
@@ -100,39 +132,41 @@ public class OrdersService : IOrdersService
             AscSort = sortOrder == SortOrderEntity.Asc
         };
 
-        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token);
+        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
         return orders.ToArray();
     }
 
-    private async Task<OrderEntityBase> ThrowIfCancelProhibitedAsync(
+    public async Task<OrderEntityBase> FindOrderAsync(
         long id,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
-        var order = await FindOrderAsync(id, token);
-        if (_forbiddenToCancelStatus.Contains(order.OrderStatus))
-        {
-            throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
-        }
-        return order;
+        var orderDal = await _ordersRepository.FindAsync(id, token, internalRequest);
+        return orderDal is null
+            ? throw new NotFoundException($"Order with id={id} not found")
+            : From(orderDal);
     }
 
-    private static void EnsureExistance(
-        RegionEntity[] reqRegions, IEnumerable<RegionEntity> regions)
+    public async Task<bool> IsOrderExistAsync(
+        long id,
+        CancellationToken token,
+        bool internalRequest = false)
     {
-        if (reqRegions.Length != regions.Count())
-        {
-            throw new NotFoundException("At least one region from the request is not presented in the service.");
-        }
+        token.ThrowIfCancellationRequested();
+
+        var orderDal = await _ordersRepository.FindAsync(id, token, internalRequest);
+        return orderDal is not null;
     }
 
     public async Task<IReadOnlyCollection<OrderEntity>> GetOrdersByCustomerAsync(
         int customerId,
         DateTime sinceTimestamp,
         PaginationEntity pagination,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
@@ -154,7 +188,7 @@ public class OrdersService : IOrdersService
             CustomerId = customerId,
             SinceTimestamp = sinceTimestamp,
         };
-        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token);
+        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
         return orders.ToArray();
     }
@@ -162,7 +196,8 @@ public class OrdersService : IOrdersService
     public async Task<List<OrdersStatisticEntity>> GetAggregatedOrdersByRegionAsync(
         RegionEntity[] reqRegions,
         DateTime sinceTimestamp,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
@@ -177,7 +212,7 @@ public class OrdersService : IOrdersService
             ReqRegionsNames = reqRegionsNames,
             SinceTimestamp = sinceTimestamp
         };
-        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token);
+        var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
 
         var groupedOrders = orders.GroupBy(o => o.CreatedRegion.Name);
@@ -196,16 +231,29 @@ public class OrdersService : IOrdersService
         return result;
     }
 
-    private async Task<OrderEntityBase> FindOrderAsync(
+    private async Task<OrderEntityBase> ThrowIfCancelProhibitedAsync(
         long id,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
-        var orderDal = await _ordersRepository.FindAsync(id, token);
-        return orderDal is null
-            ? throw new NotFoundException($"Order with id={id} not found")
-            : From(orderDal);
+        var order = await FindOrderAsync(id, token, internalRequest);
+        if (_forbiddenToCancelStatus.Contains(order.OrderStatus))
+        {
+            throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
+        }
+        return order;
+    }
+
+    private static void EnsureExistance(
+        RegionEntity[] reqRegions,
+        IEnumerable<RegionEntity> regions)
+    {
+        if (reqRegions.Length != regions.Count())
+        {
+            throw new NotFoundException("At least one region from the request is not presented in the service.");
+        }
     }
 
     private static RegionEntity From(RegionDal region) => new(
@@ -241,6 +289,20 @@ public class OrdersService : IOrdersService
         Created: order.Created,
         RegionName: order.RegionName);
 
+    private static OrderDal From(OrderEntity order, int addressId) => new(
+        Id: order.Id,
+        OrderStatus: From(order.OrderStatus),
+        OrderType: From(order.OrderType),
+        CustomerId: order.CustomerId,
+        CustomerFullName: order.CustomerFullName,
+        CustomerMobileNumber: order.CustomerMobileNumber,
+        AddressId: addressId,
+        ItemsCount: order.ItemsCount,
+        Price: order.Price,
+        Weight: order.Weight,
+        Created: order.Created,
+        RegionName: order.CreatedRegion.Name);
+
     private static AddressEntity From(AddressDal address) => new(
         address.RegionName,
         address.City,
@@ -249,6 +311,14 @@ public class OrdersService : IOrdersService
         address.Apartment,
         Latitude: address.CoordinateLatLon.X,
         Longitude: address.CoordinateLatLon.Y);
+
+    private static AddressDalToInsert From(AddressEntity address) => new(
+        RegionName: address.Region,
+        City: address.City,
+        Street: address.Street,
+        Building: address.Building,
+        Apartment: address.Apartment,
+        CoordinateLatLon: new NpgsqlPoint(address.Latitude, address.Longitude));
 
     private static OrderStatusEntity From(OrderStatus orderStatus) =>
         orderStatus switch
@@ -259,6 +329,19 @@ public class OrdersService : IOrdersService
             OrderStatus.Delivered => OrderStatusEntity.Delivered,
             OrderStatus.Cancelled => OrderStatusEntity.Cancelled,
             OrderStatus.PreOrder => OrderStatusEntity.PreOrder,
+
+            _ => throw new ArgumentOutOfRangeException(nameof(orderStatus), orderStatus, null)
+        };
+
+    private static OrderStatus From(OrderStatusEntity orderStatus) =>
+        orderStatus switch
+        {
+            OrderStatusEntity.Created => OrderStatus.Created,
+            OrderStatusEntity.SentToCustomer => OrderStatus.SentToCustomer,
+            OrderStatusEntity.Lost => OrderStatus.Lost,
+            OrderStatusEntity.Delivered => OrderStatus.Delivered,
+            OrderStatusEntity.Cancelled => OrderStatus.Cancelled,
+            OrderStatusEntity.PreOrder => OrderStatus.PreOrder,
 
             _ => throw new ArgumentOutOfRangeException(nameof(orderStatus), orderStatus, null)
         };

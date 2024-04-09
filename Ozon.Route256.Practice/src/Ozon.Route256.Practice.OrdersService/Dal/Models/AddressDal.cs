@@ -10,3 +10,11 @@ public record AddressDal(
     string Building,
     string Apartment,
     NpgsqlPoint CoordinateLatLon);
+
+public record AddressDalToInsert(
+    string RegionName,
+    string City,
+    string Street,
+    string Building,
+    string Apartment,
+    NpgsqlPoint CoordinateLatLon);

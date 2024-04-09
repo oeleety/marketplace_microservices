@@ -13,7 +13,7 @@
         "ROUTE256_KAFKA_BROKERS": "localhost:29091",
         "ROUTE256_REDIS": "localhost",
         "MIGRATE_AND_RUN": "MIGRATE_AND_RUN",
-        "ROUTE256_OS_DB": "Server=localhost;Port=5401;Database=orders-service-db3;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
+        "ROUTE256_OS_DB": "Server=localhost;Port=5401;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5067"

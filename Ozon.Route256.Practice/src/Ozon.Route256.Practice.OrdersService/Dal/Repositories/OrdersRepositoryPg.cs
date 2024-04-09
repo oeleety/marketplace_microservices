@@ -23,17 +23,53 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<OrderDal?> FindAsync(long id, CancellationToken token)
+    public async Task CreateAsync(
+        OrderDal order,
+        CancellationToken token)
     {
         const string sql = @$"
-            select {Fields}
-            from {Table}
-            where id = :id;
+        insert into {Table} ({Fields})
+        values (:id, :status, :type, :customer_id, :customer_full_name, :customer_mobile_number, :address_id, 
+            :items_count, :price, :weight, :created, :region_name);
         ";
 
         await using var connection = await _connectionFactory.OpenConnectionAsync();
         await using var command = new NpgsqlCommand(sql, connection);
+
+        command.Parameters.Add("id", order.Id);
+        command.Parameters.Add("status", order.OrderStatus);
+        command.Parameters.Add("type", order.OrderType);
+        command.Parameters.Add("customer_id", order.CustomerId);
+        command.Parameters.Add("customer_full_name", order.CustomerFullName);
+        command.Parameters.Add("customer_mobile_number", order.CustomerMobileNumber);
+        command.Parameters.Add("address_id", order.AddressId);
+        command.Parameters.Add("items_count", order.ItemsCount);
+        command.Parameters.Add("price", order.Price);
+        command.Parameters.Add("weight", order.Weight);
+        command.Parameters.Add("created", order.Created);
+        command.Parameters.Add("region_name", order.RegionName);
+
+        await command.ExecuteNonQueryAsync(token);
+    }
+
+    public async Task<OrderDal?> FindAsync(
+        long id, 
+        CancellationToken token,
+        bool internalRequest = false)
+    {
+        string sql = @$"
+            select {Fields}
+            from {Table}
+            where id = :id
+        ";
+        if (!internalRequest)
+        {
+            sql += " and status != :status ";
+        }
+        await using var connection = await _connectionFactory.OpenConnectionAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.Add("id", id);
+        command.Parameters.Add("status", OrderStatus.PreOrder);
 
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, token);
         var result = await ReadOrdersAsync(reader, token);
@@ -61,7 +97,8 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
 
     public async Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync(
         OrderFilterOptions filterOptions,
-        CancellationToken token)
+        CancellationToken token,
+        bool internalRequest = false)
     {
         token.ThrowIfCancellationRequested();
 
@@ -73,6 +110,10 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
             inner join addresses a on o.address_id = a.id
             where 1=1 
         ";
+        if (!internalRequest)
+        {
+            sql += " and status != :status ";
+        }
         if (filterOptions.ReqRegionsNames.Any())
         {
             sql += "and o.region_name = any(:names::text[]) ";
@@ -119,6 +160,7 @@ public sealed class OrdersRepositoryPg : IOrdersRepositoryPg
         command.Parameters.Add("customer_id", filterOptions.CustomerId);
         command.Parameters.Add("type", filterOptions.Type);
         command.Parameters.Add("since", filterOptions.SinceTimestamp);
+        command.Parameters.Add("status", OrderStatus.PreOrder);
 
         await using var reader = await command.ExecuteReaderAsync(token);
 

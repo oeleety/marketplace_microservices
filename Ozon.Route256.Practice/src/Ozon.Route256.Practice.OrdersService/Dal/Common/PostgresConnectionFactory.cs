@@ -27,6 +27,7 @@ public class PostgresConnectionFactory: IPostgresConnectionFactory
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
         dataSourceBuilder.MapEnum<OrderType>("order_type");
         dataSourceBuilder.MapEnum<OrderStatus>("order_status");
+        dataSourceBuilder.MapComposite<AddressDalToInsert>("address_dal_to_insert");
 
         return dataSourceBuilder.Build();
     }

@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPostgresConnectionFactory>(_ => new PostgresConnectionFactory(connectionString));
         services.AddScoped<IOrdersRepositoryPg, OrdersRepositoryPg>();
         services.AddScoped<IRegionsRepositoryPg, RegionsRepositoryPg>();
+        services.AddScoped<IAddressesRepositoryPg, AddressesRepositoryPg>();
 
         return services;
     }

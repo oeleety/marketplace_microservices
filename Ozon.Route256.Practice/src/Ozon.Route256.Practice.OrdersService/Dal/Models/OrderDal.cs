@@ -10,7 +10,7 @@ public record OrderDal(
     int AddressId,
     int ItemsCount,
     decimal Price,
-    float Weight,
+    double Weight,
     DateTime Created,
     string RegionName);
 

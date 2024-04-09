@@ -1,10 +1,10 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 using Confluent.Kafka;
-using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Models;
 using Ozon.Route256.Practice.OrdersService.Configuration;
 using Microsoft.Extensions.Options;
+using Ozon.Route256.Practice.OrdersService.Bll;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
@@ -18,7 +18,7 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
             new JsonStringEnumConverter()
         }
     };
-    private IRedisOrdersRepository _redisOrdersRepository;
+    private IOrdersService _ordersService;
 
     public OrdersEventsConsumerService(
         IServiceProvider serviceProvider,
@@ -39,36 +39,24 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _redisOrdersRepository = serviceProvider.GetRequiredService<IRedisOrdersRepository>();
+        _ordersService = serviceProvider.GetRequiredService<IOrdersService>();
 
         _logger.LogInformation("Handling messages from Kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
 
         var value = message.Message.Value;
         var orderEvent= JsonSerializer.Deserialize<OrderEvent>(value, _jsonSerializerOptions);
 
-        var order = await _redisOrdersRepository.FindAsync(orderEvent.Id, cancellationToken);
-        if (order is null)
+        var isExist = await _ordersService.IsOrderExistAsync(orderEvent.OrderId, cancellationToken, internalRequest: true);
+        if (!isExist)
         {
-            _logger.LogError("No orders with id={orderEvent.Id} is found in repository. Couldn't handle event.", orderEvent.Id);
+            _logger.LogError("No orders with id={orderEvent.Id} is found in repository. Couldn't handle event.", orderEvent.OrderId);
         }
         else
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var updOrder = order with { OrderStatus = From(orderEvent.OrderState) };
-            await _redisOrdersRepository.UpdateAsync(updOrder, cancellationToken);
-            _logger.LogInformation("Order id = {orderEvent.Id} status updated", orderEvent.Id);
+            await _ordersService.UpdateOrderStatusAsync(orderEvent.OrderId, orderEvent.OrderState, cancellationToken);
+            _logger.LogInformation("Order id = {orderEvent.Id} status updated", orderEvent.OrderId);
         }
     }
-
-    private static DataAccess.Entities.OrderStatusEntity From(OrderStatusEntity eventStatus) => eventStatus switch
-    {
-        OrderStatusEntity.Created => DataAccess.Entities.OrderStatusEntity.Created,
-        OrderStatusEntity.SentToCustomer => DataAccess.Entities.OrderStatusEntity.SentToCustomer,
-        OrderStatusEntity.Delivered => DataAccess.Entities.OrderStatusEntity.Delivered,
-        OrderStatusEntity.Lost => DataAccess.Entities.OrderStatusEntity.Lost,
-        OrderStatusEntity.Cancelled => DataAccess.Entities.OrderStatusEntity.Cancelled,
-
-        _ => throw new ArgumentOutOfRangeException(nameof(eventStatus), eventStatus, null)
-    };
 }
