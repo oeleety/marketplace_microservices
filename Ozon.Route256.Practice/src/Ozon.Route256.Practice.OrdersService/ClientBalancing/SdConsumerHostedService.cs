@@ -21,7 +21,6 @@ public sealed class SdConsumerHostedService : BackgroundService
         _logger = logger;
     }
 
-
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)

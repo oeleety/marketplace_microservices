@@ -56,7 +56,7 @@ message GetAggregatedOrdersByRegionRequest {
 }
 
 message GetAggregatedOrdersByRegionResponse {
-    map<int32, OrdersStatistic> statistic_by_region = 1; 
+    repeated OrdersStatistic statistic_by_region = 1; 
 }
 
 message GetOrdersByCustomerRequest {
@@ -96,8 +96,7 @@ message Address {
 }
 
 message Region {
-    int32 id = 1;
-    string name = 2;
+    string name = 1;
 }
 
 message OrdersStatistic{

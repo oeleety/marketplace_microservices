@@ -1,3 +1,4 @@
+using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Ozon.Route256.Practice.OrdersService;
 using Ozon.Route256.Practice.Shared;
@@ -10,4 +11,24 @@ await Host
                 option.ListenPortByOptions("ROUTE256_GRPC_PORT", HttpProtocols.Http2);
             }))
     .Build()
-    .RunAsync();
+    .RunOrMigrateAsync();
+
+public static class ProgramExtension
+{
+    public static async Task RunOrMigrateAsync(
+        this IHost host)
+    {
+        var option = Environment.GetEnvironmentVariable("MIGRATE_AND_RUN");
+        if (!string.IsNullOrWhiteSpace(option))
+        {
+            using var scope = host.Services.CreateScope();
+            var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+            runner.MigrateUp();
+            await host.RunAsync();
+        }
+        else
+        {
+            await host.RunAsync();
+        }
+    }
+}

@@ -1,32 +1,28 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 using Confluent.Kafka;
-using Ozon.Route256.Practice.OrdersService.DataAccess;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Models;
 using Ozon.Route256.Practice.OrdersService.CachedClients;
-using System.Collections.Concurrent;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Bogus;
 using Ozon.Route256.Practice.OrdersService.Configuration;
 using Microsoft.Extensions.Options;
+using Ozon.Route256.Practice.OrdersService.Bll;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, string>
 {
     private const int DeliveryArea = 5000000; // meters
-
-    private static ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion;
     private static readonly Faker Faker = new();
-
+    private Dictionary<string, (double latitude, double longitude)> _depotsByRegion = new();
     private readonly ILogger<PreOrderConsumerService> _logger;
     private readonly INewOrderProducer _producer;
     private readonly CustomersServiceClient _customersServiceTest;
     private CachedCustomersClient _cachedCustomersClient;
-    private IRedisOrdersRepository _redisOrdersRepository;
-    private IOrdersRepository _ordersRepository;
+    private IOrdersService _ordersService;
     private bool _isCustomersFilledTest = false;
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -63,9 +59,8 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        _redisOrdersRepository = serviceProvider.GetRequiredService<IRedisOrdersRepository>();
         _cachedCustomersClient = serviceProvider.GetRequiredService<CachedCustomersClient>();
-        _ordersRepository = serviceProvider.GetRequiredService<IOrdersRepository>();
+        _ordersService = serviceProvider.GetRequiredService<IOrdersService>();
 
         _logger.LogInformation("Handling messages from kafka {TopicName} {message.Message.Value}", TopicName, message.Message.Value);
         var value = message.Message.Value;
@@ -82,7 +77,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             }
             _isCustomersFilledTest = true;
         }
-        var customerId = Random.Shared.Next(1, count + 1);// preOrder.Customer.Id
+        var customerId = Random.Shared.Next(1, count + 1);// preOrder.Customer.Id testing purpose
         var customer = await _cachedCustomersClient.GetCustomerByIdAsync(customerId, cancellationToken);
         if (customer is null)
         {
@@ -90,16 +85,19 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
                 "from a preorder with key {message.Message.Key}", customerId, message.Message.Key);
             return;
         }
-        var orderEntity = From(preOrder, customer);
-        var isExist = await _redisOrdersRepository.IsExistAsync(orderEntity.Id, cancellationToken);
-
+        var isExist = await _ordersService.IsOrderExistAsync(preOrder.Id, cancellationToken, internalRequest: true);
         if (isExist)
         {
-            _logger.LogError("Coudn't handle preorder with id = {orderEntity.Id} because repository already contains an order with the same Id.", orderEntity.Id);
+            _logger.LogError("Coudn't handle preorder with id = {preOrder.Id} because repository already contains an order with the same Id.", preOrder.Id);
             return;
         }
-        await _redisOrdersRepository.AddOrderAsync(orderEntity, cancellationToken);
-        _logger.LogInformation("Preorder added into redis");
+
+        await MockPreorderRegionAsync(preOrder, cancellationToken);
+
+        var orderEntity = From(preOrder, customer);
+        cancellationToken.ThrowIfCancellationRequested();
+        await _ordersService.AddOrderAsync(orderEntity, cancellationToken);
+        _logger.LogInformation("Preorder added");
 
         if (await ValidatePreOrderAsync(preOrder, cancellationToken))
         {
@@ -107,32 +105,52 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
         }
     }
 
-    private async Task<bool> ValidatePreOrderAsync(
+    private async Task UploadRegionsIfNeededAsync(CancellationToken cancellationToken)
+    {
+        if (!_depotsByRegion.Any())
+        {
+            RegionEntity[] regions = await _ordersService.GetRegionsAsync(cancellationToken);
+            foreach (var r in regions)
+            {
+                _depotsByRegion.TryAdd(r.Name, r.Depot);
+            }
+        }
+    }
+
+    private async Task MockPreorderRegionAsync(// todo for testing purposes 
         PreOrder preOrder,
         CancellationToken cancellationToken)
     {
-        if (!_depotsByRegion?.Any() ?? true)
-        {
-            _depotsByRegion = await _ordersRepository.GetRegionsWithDepots(cancellationToken);
-        }
+        await UploadRegionsIfNeededAsync(cancellationToken);
+        var rand = new Random();
+        preOrder.Customer.Address.Region = _depotsByRegion.ElementAt(rand.Next(0, _depotsByRegion.Count)).Key;
+    }
+
+    private async Task<bool>ValidatePreOrderAsync(
+        PreOrder preOrder,
+        CancellationToken cancellationToken)
+    {
+        await UploadRegionsIfNeededAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
         var region = preOrder.Customer.Address.Region;
-        if (!_depotsByRegion.TryGetValue(region, out (double latitude, double longitude) depot))
+        if (_depotsByRegion.TryGetValue(region, out (double latitude, double longitude) depot))
         {
-            var rand = new Random();
-            depot = _depotsByRegion.ElementAt(rand.Next(0, _depotsByRegion.Count)).Value; // todo for testing purposes 
+            var distance = GetDistance(depot, (preOrder.Customer.Address.Latitude, preOrder.Customer.Address.Longitude));
+            var isValid = distance <= DeliveryArea;
+            return isValid;
         }
-        var distance = GetDistance(depot, (preOrder.Customer.Address.Latitude, preOrder.Customer.Address.Longitude));
-        var isValid = distance <= DeliveryArea;
-        _logger.LogInformation("Preorder with id = {preOrder.Id} has validation result = {isValid}. Distance = {distance}", preOrder.Id, isValid, distance);
-        return isValid;
+        else
+        {
+            _logger.LogError("Preorder with id = {preOrder.Id} from a not valid region", preOrder.Id);
+            return false;
+        }
     }
 
     private static OrderEntity From(PreOrder preOrder, Practice.Proto.Customer customer) =>
         new(
             preOrder.Id,
-            DataAccess.Entities.OrderStatusEntity.PreOrder,
+            OrderStatusEntity.PreOrder,
             From(preOrder.Source), 
             customer.Id,
             customer.FirstName + " " + customer.LastName, 
@@ -142,7 +160,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             preOrder.Goods.Sum(g => g.Price),
             preOrder.Goods.Sum(g => g.Weight),
             DateTime.UtcNow,
-            new RegionEntity(1, preOrder.Customer.Address.Region) // todo change contract to just a name 
+            new RegionEntity(preOrder.Customer.Address.Region)
         );
 
     private static OrderTypeEntity From(OrderSource source) => source switch
@@ -153,7 +171,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
         _ => throw new ArgumentOutOfRangeException(nameof(source), source, null)
     };
 
-    private static AddressEntity From(Address a) => new(
+    private static AddressEntity From(Models.Address a) => new(
         a.Region,
         a.City,
         a.Street,

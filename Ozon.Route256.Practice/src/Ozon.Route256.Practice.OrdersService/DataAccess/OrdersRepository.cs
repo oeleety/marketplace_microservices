@@ -5,11 +5,10 @@ using Ozon.Route256.Practice.OrdersService.Exceptions;
 
 namespace Ozon.Route256.Practice.OrdersService.DataAccess;
 
-internal class OrdersRepository : IOrdersRepository
+internal class OrdersRepository : IOrdersRepositoryInMemory
 {
-    private static readonly ConcurrentDictionary<int, RegionEntity> _regions = new();
+    private static readonly ConcurrentDictionary<string, RegionEntity> _regions = new();
     private static readonly ConcurrentDictionary<long, OrderEntity> _orders = new();
-    private static readonly ConcurrentDictionary<string, (double latitude, double longitude)> _depotsByRegion = new();
     private static readonly HashSet<OrderStatusEntity> _forbiddenToCancelStatus = new()
     {
         OrderStatusEntity.Cancelled,
@@ -18,16 +17,12 @@ internal class OrdersRepository : IOrdersRepository
 
     public OrdersRepository()
     {
-        var moscow = new RegionEntity(1, "Moscow");
-        var novosibirsk = new RegionEntity(2, "Novosibirsk");
-        var spb = new RegionEntity(3, "StPetersburg");
-        _regions.TryAdd(moscow.Id, moscow);
-        _regions.TryAdd(novosibirsk.Id, novosibirsk);
-        _regions.TryAdd(spb.Id, spb);
-
-        _depotsByRegion.TryAdd(moscow.Name, (55.7575, 37.6352));
-        _depotsByRegion.TryAdd(novosibirsk.Name, (54.9738, 82.8909));
-        _depotsByRegion.TryAdd(spb.Name, (59.9374, 30.3550));
+        var moscow = new RegionEntity("Moscow", (55.7575, 37.6352));
+        var novosibirsk = new RegionEntity("Novosibirsk", (54.9738, 82.8909));
+        var spb = new RegionEntity("StPetersburg", (59.9374, 30.3550));
+        _regions.TryAdd(moscow.Name, moscow);
+        _regions.TryAdd(novosibirsk.Name, novosibirsk);
+        _regions.TryAdd(spb.Name, spb);
 
         var date = DateTime.ParseExact("2023-11-01 14:40:52,531", "yyyy-MM-dd HH:mm:ss,fff", System.Globalization.CultureInfo.InvariantCulture).ToUniversalTime();
         var order1 = new OrderEntity(1, OrderStatusEntity.Created, OrderTypeEntity.Api, CustomerId: 1, 
@@ -67,14 +62,6 @@ internal class OrdersRepository : IOrdersRepository
         return Task.FromResult(_regions.Values.ToArray());
     }
 
-    public Task<ConcurrentDictionary<string, (double latitude, double longitude)>> 
-        GetRegionsWithDepots(CancellationToken token = default)
-    {
-        token.ThrowIfCancellationRequested();
-
-        return Task.FromResult(_depotsByRegion);
-    }
-
     public Task<OrderEntity[]> GetOrders(
         RegionEntity[] reqRegions,
         OrderTypeEntity orderType,
@@ -87,8 +74,8 @@ internal class OrdersRepository : IOrdersRepository
 
         CheckExistance(reqRegions);
 
-        var reqRegionsIds = reqRegions.Select(r => r.Id);
-        var orders = _orders.Where(o => reqRegionsIds.Contains(o.Value.CreatedRegion.Id)
+        var reqRegionsNames = reqRegions.Select(r => r.Name);
+        var orders = _orders.Where(o => reqRegionsNames.Contains(o.Value.CreatedRegion.Name)
             && o.Value.OrderType == orderType).Select(o => o.Value);
         
         token.ThrowIfCancellationRequested();
@@ -99,7 +86,7 @@ internal class OrdersRepository : IOrdersRepository
     }
 
     public Task<IReadOnlyCollection<OrderEntity>> GetOrdersByCustomer(
-        long customerId,
+        int customerId,
         DateTime sinceTimestamp,
         PaginationEntity pagination,
         CancellationToken token = default)
@@ -115,7 +102,7 @@ internal class OrdersRepository : IOrdersRepository
         return Task.FromResult(ordersCollection);
     }
 
-    public Task<Dictionary<int, OrdersStatisticEntity>> GetAggregatedOrdersByRegion(
+    public Task<List<OrdersStatisticEntity>> GetAggregatedOrdersByRegion(
         RegionEntity[] reqRegions,
         DateTime sinceTimestamp,
         CancellationToken token = default)
@@ -127,12 +114,12 @@ internal class OrdersRepository : IOrdersRepository
         if (reqRegions.Any())
         {
             CheckExistance(reqRegions);
-            var reqRegionsIds = reqRegions.Select(r => r.Id);
-            orders = orders.Where(o => reqRegionsIds.Contains(o.Value.CreatedRegion.Id));
+            var reqRegionsNames = reqRegions.Select(r => r.Name);
+            orders = orders.Where(o => reqRegionsNames.Contains(o.Value.CreatedRegion.Name));
         }
         var groupedOrders = orders.GroupBy(o => o.Value.CreatedRegion);
         
-        var result = new Dictionary<int, OrdersStatisticEntity>();
+        var result = new List<OrdersStatisticEntity>();
         foreach (var group in groupedOrders)
         {
             var region = group.Key;
@@ -142,13 +129,14 @@ internal class OrdersRepository : IOrdersRepository
             var price = ordersInGroup.Sum(o => o.Price);
             var weight = ordersInGroup.Sum(o => o.Weight);
             var customerCount = ordersInGroup.Select(o => o.CustomerId).Distinct().Count();
-            result.Add(region.Id, new OrdersStatisticEntity(region.Name, ordersCount, price, weight, customerCount));
+            result.Add(new OrdersStatisticEntity(region.Name, ordersCount, price, weight, customerCount));
         }
 
         return Task.FromResult(result);
     }
 
-    public async Task<OrderEntity> ThrowIfCancelProhibitedAsync(long id, CancellationToken token = default)
+    public async Task<OrderEntity> ThrowIfCancelProhibitedAsync(
+        long id, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
 
@@ -174,7 +162,7 @@ internal class OrdersRepository : IOrdersRepository
     private static bool CheckExistance(
         RegionEntity[] reqRegions)
     {
-        bool isSubset = reqRegions.All(elem => _regions.ContainsKey(elem.Id));
+        bool isSubset = reqRegions.All(elem => _regions.ContainsKey(elem.Name));
         if (!isSubset)
         {
             throw new NotFoundException("At least one region from the request is not presented in the service.");

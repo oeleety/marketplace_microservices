@@ -4,7 +4,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddRepositories(this IServiceCollection collection)
     {
-        collection.AddScoped<IOrdersRepository, OrdersRepository>();
+        collection.AddScoped<IOrdersRepositoryInMemory, OrdersRepository>();
         collection.AddScoped<RedisCustomersCache>();
         collection.AddScoped<IRedisOrdersRepository, RedisOrdersRepository>();
 

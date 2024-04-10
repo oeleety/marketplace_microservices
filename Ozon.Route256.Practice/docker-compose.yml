@@ -3,8 +3,8 @@ version: "3.9"
 volumes:
     gateway-service-db:
         name: gateway-service-db
-    orders-service-db:
-        name: orders-service-db
+    orders-service-db6:
+        name: orders-service-db6
     customer-service-db:
         name: customer-service-db
     
@@ -34,6 +34,8 @@ services:
             "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
             "ROUTE256_GRPC_PORT": "5005"
             "ROUTE256_REDIS": "redis"
+            "ROUTE256_OS_DB": "Server=orders-service-db6;Port=5432;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
+            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
         depends_on:
             - broker-1
             - broker-2
@@ -53,22 +55,24 @@ services:
             "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
             "ROUTE256_GRPC_PORT": "5006"
             "ROUTE256_REDIS": "redis"
+            "ROUTE256_OS_DB": "Server=orders-service-db6;Port=5432;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
+            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
         depends_on:
             - broker-1
             - broker-2
             - broker-3
 
-    orders-service-db:
+    orders-service-db6:
         image: postgres:latest
-        container_name: orders-service-db
+        container_name: orders-service-db6
         environment:
-            - POSTGRES_DB=orders-service
+            - POSTGRES_DB=orders-service-db6
             - POSTGRES_USER=test
             - POSTGRES_PASSWORD=test
         ports:
             - "5401:5432"
         volumes:
-            - orders-service-db:/var/lib/postgresql/data
+            - orders-service-db6:/var/lib/postgresql/data
     
     customer-service:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/customer-service:latest
