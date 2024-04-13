@@ -43,24 +43,25 @@ public class OrdersService : IOrdersService
     {
         token.ThrowIfCancellationRequested();
 
-        using var ts = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions
-            {
-                IsolationLevel = IsolationLevel.ReadCommitted,
-                Timeout = TimeSpan.FromSeconds(5)
-            },
-            TransactionScopeAsyncFlowOption.Enabled);
+        //using var transactionScope = new TransactionScope( // todo
+        //    TransactionScopeOption.Required,
+        //    new TransactionOptions
+        //    {
+        //        IsolationLevel = IsolationLevel.ReadUncommitted,
+        //        Timeout = TimeSpan.FromSeconds(60)
+        //    },
+        //    TransactionScopeAsyncFlowOption.Enabled);
 
-        var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.DeliveryAddress) }, token))
+        var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.Id, order.DeliveryAddress) }, token))
             .First();
 
         await _ordersRepository.CreateAsync(From(order, addressId), token);
 
-        ts.Complete();
+        //transactionScope.Complete();
     }
 
-    public async Task CancelOrderAsync(long id,
+    public async Task CancelOrderAsync(
+        long id,
         CancellationToken token,
         bool internalRequest = false)
     {
@@ -71,7 +72,7 @@ public class OrdersService : IOrdersService
         {
             throw new UnprocessableException($"Cannot cancel order with id={id}");
         }
-        await _ordersRepository.UpdateStatusAsync(new[] { id }, OrderStatus.Cancelled, token);
+        await _ordersRepository.UpdateStatusAsync(id , OrderStatus.Cancelled, token);
     }
 
     public async Task UpdateOrderStatusAsync(
@@ -81,7 +82,7 @@ public class OrdersService : IOrdersService
     {
         token.ThrowIfCancellationRequested();
 
-        await _ordersRepository.UpdateStatusAsync(new[] { id }, From(status), token);
+        await _ordersRepository.UpdateStatusAsync(id, From(status), token);
     }
 
     public async Task<OrderStatusEntity> GetOrderStatusAsync(
@@ -312,13 +313,14 @@ public class OrdersService : IOrdersService
         Latitude: address.CoordinateLatLon.X,
         Longitude: address.CoordinateLatLon.Y);
 
-    private static AddressDalToInsert From(AddressEntity address) => new(
+    private static AddressDalToInsert From(long orderId, AddressEntity address) => new(
         RegionName: address.Region,
         City: address.City,
         Street: address.Street,
         Building: address.Building,
         Apartment: address.Apartment,
-        CoordinateLatLon: new NpgsqlPoint(address.Latitude, address.Longitude));
+        CoordinateLatLon: new NpgsqlPoint(address.Latitude, address.Longitude),
+        OrderId: orderId);
 
     private static OrderStatusEntity From(OrderStatus orderStatus) =>
         orderStatus switch

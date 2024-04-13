@@ -1,6 +1,6 @@
-using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Ozon.Route256.Practice.OrdersService;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 using Ozon.Route256.Practice.Shared;
 
 await Host
@@ -21,9 +21,11 @@ public static class ProgramExtension
         var option = Environment.GetEnvironmentVariable("MIGRATE_AND_RUN");
         if (!string.IsNullOrWhiteSpace(option))
         {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
             using var scope = host.Services.CreateScope();
-            var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-            runner.MigrateUp();
+            var runner = scope.ServiceProvider.GetRequiredService<IShardMigrator>();
+            await runner.MigrateAsync(cts.Token);
+
             await host.RunAsync();
         }
         else

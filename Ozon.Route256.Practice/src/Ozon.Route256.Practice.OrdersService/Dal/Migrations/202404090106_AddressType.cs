@@ -1,28 +1,35 @@
 ﻿using FluentMigrator;
-using Ozon.Route256.Practice.OrdersService.Dal.Common;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 
-namespace Ozon.Route256.Practice.CustomerService.Dal.Migrations;
+namespace Ozon.Route256.Practice.OrdersService.Dal.Migrations;
 
 [Migration(4, "Address type")]
-public class AddressType: SqlMigration
+public class AddressType : ShardSqlMigration
 {
     protected override string GetUpSql(
         IServiceProvider services) => @"
 
-create type address_dal_to_insert as
-(
-    region_name text,
-    city text,
-    street text,
-    building text,
-    apartment text,
-    coordinate_lat_lon point
-);
+do $$
+begin
+    if not exists (select 1 from pg_type where typname = 'address_dal_to_insert') then        
+        create type public.address_dal_to_insert as 
+        (
+            region_name text,
+            city text,
+            street text,
+            building text,
+            apartment text,
+            coordinate_lat_lon point,
+            order_id bigint
+        );
+    end if;
+
+end $$;
 ";
 
     protected override string GetDownSql(
-        IServiceProvider services) =>@"
+        IServiceProvider services) => @"
 
-drop type address;
+drop type address_dal_to_insert;
 ";
 }
