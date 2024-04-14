@@ -7,6 +7,7 @@ using Ozon.Route256.Practice.OrdersService.Dal.Repositories;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
+using Microsoft.OpenApi.Extensions;
 
 namespace Ozon.Route256.Practice.OrdersService.Bll;
 
@@ -43,21 +44,21 @@ public class OrdersService : IOrdersService
     {
         token.ThrowIfCancellationRequested();
 
-        //using var transactionScope = new TransactionScope( // todo
-        //    TransactionScopeOption.Required,
-        //    new TransactionOptions
-        //    {
-        //        IsolationLevel = IsolationLevel.ReadUncommitted,
-        //        Timeout = TimeSpan.FromSeconds(60)
-        //    },
-        //    TransactionScopeAsyncFlowOption.Enabled);
+        using var transactionScope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions
+            {
+                IsolationLevel = IsolationLevel.ReadUncommitted,
+                Timeout = TimeSpan.FromSeconds(60)
+            },
+            TransactionScopeAsyncFlowOption.Enabled);
 
         var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.Id, order.DeliveryAddress) }, token))
             .First();
 
         await _ordersRepository.CreateAsync(From(order, addressId), token);
 
-        //transactionScope.Complete();
+        transactionScope.Complete();
     }
 
     public async Task CancelOrderAsync(
@@ -122,19 +123,17 @@ public class OrdersService : IOrdersService
         var regions = regionsDal.Select(r => From(r));
         EnsureExistance(reqRegions, regions);
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
-            Limit = pagination.Limit,
-            Offset = pagination.Offset,
             ReqRegionsNames = reqRegionsNames,
             FilterOrderType = true,
             Type = From(orderType),
-            SortColumn = From(valueOrder),
-            AscSort = sortOrder == SortOrderEntity.Asc
         };
 
         var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
+        orders = Sort(orders, valueOrder, sortOrder == SortOrderEntity.Asc);
+        orders = Paginate(orders, pagination);
         return orders.ToArray();
     }
 
@@ -182,15 +181,14 @@ public class OrdersService : IOrdersService
 
         token.ThrowIfCancellationRequested();
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
-            Limit = pagination.Limit,
-            Offset = pagination.Offset,
             CustomerId = customerId,
             SinceTimestamp = sinceTimestamp,
         };
         var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
+        orders = Paginate(orders, pagination);
         return orders.ToArray();
     }
 
@@ -208,7 +206,7 @@ public class OrdersService : IOrdersService
         var regions = regionsDal.Select(r => From(r));
         EnsureExistance(reqRegions, regions);
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
             ReqRegionsNames = reqRegionsNames,
             SinceTimestamp = sinceTimestamp
@@ -256,6 +254,27 @@ public class OrdersService : IOrdersService
             throw new NotFoundException("At least one region from the request is not presented in the service.");
         }
     }
+
+    private static IEnumerable<OrderEntity> Sort(
+        IEnumerable<OrderEntity> orders,
+        ValueOrderEntity valueOrder,
+        bool AscSort) => valueOrder switch
+    {
+        ValueOrderEntity.None => orders,
+        ValueOrderEntity.Region =>
+                AscSort
+                ? orders.OrderBy(o => o.CreatedRegion.Name)
+                : orders.OrderByDescending(o => o.CreatedRegion.Name),
+        ValueOrderEntity.Status =>
+                AscSort
+                ? orders.OrderBy(o => o.OrderStatus.GetDisplayName())
+                : orders.OrderByDescending(o => o.OrderStatus.GetDisplayName()),
+
+        _ => throw new ArgumentOutOfRangeException(nameof(valueOrder), valueOrder, null)
+    };
+
+    private static IEnumerable<OrderEntity> Paginate(IEnumerable<OrderEntity> list,
+        PaginationEntity pagination) => list.Skip(pagination.Offset).Take(pagination.Limit);
 
     private static RegionEntity From(RegionDal region) => new(
         region.Name,

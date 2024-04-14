@@ -97,8 +97,8 @@ public sealed class ShardOrdersRepositoryPg : BaseShardRepository, IOrdersReposi
         await connection.ExecuteNonQueryAsync(command, token);
     }
 
-    public async Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync( // todo not fully implemented yet, check
-        OrderFilterOptions filterOptions,
+    public async Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync(
+        OrderFilterOptionsShard filterOptions,
         CancellationToken token,
         bool internalRequest = false)
     {
@@ -132,28 +132,6 @@ public sealed class ShardOrdersRepositoryPg : BaseShardRepository, IOrdersReposi
         {
             sql += "and created >= :since ";
         }
-        if (filterOptions.SortColumn != default) // todo after
-        {
-            var sort = filterOptions.AscSort ? "" : "desc ";
-            var sortColumn = filterOptions.SortColumn;
-            var orderByString = sortColumn switch
-            {
-                ValueOrderDal.None => "",
-                ValueOrderDal.Region => $"order by o.region_name {sort}, o.id ",
-                ValueOrderDal.Status => $"order by o.status {sort}, o.id ",
-
-                _ => throw new ArgumentOutOfRangeException(nameof(sortColumn), sortColumn, null)
-            };
-            sql += orderByString;
-        }
-        else
-        {
-            sql += "order by o.id "; // todo after
-        }
-        if (filterOptions.Limit != -1 && filterOptions.Offset != -1)// todo after
-        {
-            sql += "limit :limit offset :offset ";
-        }
 
         List<(OrderDal order, AddressDal address, RegionDal region)> result = new();
         foreach (var bucketId in AllBuckets)
@@ -161,8 +139,6 @@ public sealed class ShardOrdersRepositoryPg : BaseShardRepository, IOrdersReposi
             await using var connection = await OpenConnectionByBucket(bucketId, token);
             var command = connection.NpgsqlConnection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.Add("limit", filterOptions.Limit);
-            command.Parameters.Add("offset", filterOptions.Offset);
             command.Parameters.Add("names", filterOptions.ReqRegionsNames.ToArray());
             command.Parameters.Add("customer_id", filterOptions.CustomerId);
             command.Parameters.Add("type", filterOptions.Type);
@@ -172,7 +148,7 @@ public sealed class ShardOrdersRepositoryPg : BaseShardRepository, IOrdersReposi
             await using var reader = await connection.ExecuteReaderAsync(command, token);
             result.AddRange(await ReadOrdersFullAsync(reader, token));
         }
-        // todo order limit offset
+
         return result;
     }
 

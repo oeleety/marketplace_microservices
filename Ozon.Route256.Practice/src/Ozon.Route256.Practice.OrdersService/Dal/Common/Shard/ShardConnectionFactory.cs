@@ -16,6 +16,7 @@ public class ShardConnectionFactory: IShardPostgresConnectionFactory
     private readonly IDbStore _dbStore;
     private readonly DbOptions _dbOptions;
     private readonly ILogger<ShardConnectionFactory> _logger;
+    private Dictionary<int, NpgsqlDataSource> _dataSourceByBucket = new();
 
     public ShardConnectionFactory(
         ILogger<ShardConnectionFactory> logger,
@@ -42,19 +43,27 @@ public class ShardConnectionFactory: IShardPostgresConnectionFactory
         var endpoint = _dbStore.GetEndpointByBucket(bucketId);
         var connectionString = endpoint.GetConnectionString(_dbOptions);
 
-        var dataSource = GetMappedDataSource(connectionString);
+        var dataSource = GetMappedDataSource(connectionString, bucketId);
         var connection = await dataSource.OpenConnectionAsync(token);
         return new ShardNpgsqlConnection(connection, bucketId);
     } 
 
-    private static NpgsqlDataSource GetMappedDataSource(string connection)
+    private NpgsqlDataSource GetMappedDataSource(string connection, int bucketId)
     {
-        //todo https://github.com/npgsql/npgsql/issues/5064
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connection);
-        dataSourceBuilder.MapEnum<OrderType>("order_type");
-        dataSourceBuilder.MapEnum<OrderStatus>("order_status");
-        dataSourceBuilder.MapComposite<AddressDalToInsert>("address_dal_to_insert");
+        if(_dataSourceByBucket.TryGetValue(bucketId, out var dataSource))
+        {
+            return dataSource;
+        }
+        else
+        {
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connection);
+            dataSourceBuilder.MapEnum<OrderType>("order_type");
+            dataSourceBuilder.MapEnum<OrderStatus>("order_status");
+            dataSourceBuilder.MapComposite<AddressDalToInsert>("address_dal_to_insert");
 
-        return dataSourceBuilder.Build();
+            var dataSourceNew = dataSourceBuilder.Build();
+            _dataSourceByBucket.Add(bucketId, dataSourceNew);
+            return dataSourceNew;
+        }
     }
 }
