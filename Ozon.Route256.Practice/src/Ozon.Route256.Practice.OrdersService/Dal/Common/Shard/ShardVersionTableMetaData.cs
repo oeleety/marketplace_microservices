@@ -2,7 +2,7 @@
 
 namespace Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 
-public class ShardVersionTableMetaData: IVersionTableMetaData
+public class ShardVersionTableMetaData : IVersionTableMetaData
 {
     private readonly BucketMigrationContext _context;
 

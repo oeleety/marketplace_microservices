@@ -10,7 +10,7 @@ public interface IShardMigrator
     Task MigrateAsync(CancellationToken token);
 }
 
-public class ShardMigrator: IShardMigrator
+public class ShardMigrator : IShardMigrator
 {
     private readonly DbOptions _dbOptions;
     private readonly SdService.SdServiceClient _client;

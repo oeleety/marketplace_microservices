@@ -11,7 +11,7 @@ public interface IShardPostgresConnectionFactory
     Task<ShardNpgsqlConnection> OpenConnectionByBucketIdAsync(int bucketId, CancellationToken token);
 }
 
-public class ShardConnectionFactory: IShardPostgresConnectionFactory
+public class ShardConnectionFactory : IShardPostgresConnectionFactory
 {
     private readonly IDbStore _dbStore;
     private readonly DbOptions _dbOptions;

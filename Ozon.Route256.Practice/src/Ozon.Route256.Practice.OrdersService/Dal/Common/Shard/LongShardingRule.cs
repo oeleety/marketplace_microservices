@@ -8,14 +8,16 @@ public interface IShardingRule<TShardKey>
     int GetBucketId(TShardKey shardKey);
 }
 
-public class LongShardingRule : IShardingRule<long>
+public class LongShardingRule : IShardingRule<long>, IDisposable
 {
     private readonly IDbStore _dbStore;
+    private readonly Murmur32 _hashAlgorithm;
 
     public LongShardingRule(
         IDbStore dbStore)
     {
         _dbStore = dbStore;
+        _hashAlgorithm = MurmurHash.Create32();
     }
 
     public int GetBucketId(
@@ -26,12 +28,16 @@ public class LongShardingRule : IShardingRule<long>
         return Math.Abs(shardKeyHashCode) % _dbStore.BucketsCount;
     }
 
-    private static int GetShardKeyHashCode(
+    private int GetShardKeyHashCode(
         long shardKey)
     {
         var bytes = BitConverter.GetBytes(shardKey);
-        var murmur = MurmurHash.Create32();
-        var hash = murmur.ComputeHash(bytes);
+        var hash = _hashAlgorithm.ComputeHash(bytes);
         return BitConverter.ToInt32(hash);
+    }
+
+    public void Dispose()
+    {
+        _hashAlgorithm.Dispose();
     }
 }

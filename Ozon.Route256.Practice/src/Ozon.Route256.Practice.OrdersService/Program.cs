@@ -21,10 +21,10 @@ public static class ProgramExtension
         var option = Environment.GetEnvironmentVariable("MIGRATE_AND_RUN");
         if (!string.IsNullOrWhiteSpace(option))
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+            using var cancellationToken = new CancellationTokenSource(TimeSpan.FromMinutes(1));
             using var scope = host.Services.CreateScope();
             var runner = scope.ServiceProvider.GetRequiredService<IShardMigrator>();
-            await runner.MigrateAsync(cts.Token);
+            await runner.MigrateAsync(cancellationToken.Token);
 
             await host.RunAsync();
         }
