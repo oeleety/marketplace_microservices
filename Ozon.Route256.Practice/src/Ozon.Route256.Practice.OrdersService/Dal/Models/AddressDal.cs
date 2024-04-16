@@ -9,7 +9,8 @@ public record AddressDal(
     string Street,
     string Building,
     string Apartment,
-    NpgsqlPoint CoordinateLatLon);
+    NpgsqlPoint CoordinateLatLon,
+    long OrderId);
 
 public record AddressDalToInsert(
     string RegionName,
@@ -17,4 +18,5 @@ public record AddressDalToInsert(
     string Street,
     string Building,
     string Apartment,
-    NpgsqlPoint CoordinateLatLon);
+    NpgsqlPoint CoordinateLatLon,
+    long OrderId);

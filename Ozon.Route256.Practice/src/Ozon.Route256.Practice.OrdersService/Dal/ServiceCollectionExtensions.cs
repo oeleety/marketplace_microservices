@@ -3,6 +3,7 @@ using FluentMigrator.Runner;
 using Ozon.Route256.Practice.OrdersService.Dal.Common;
 using Ozon.Route256.Practice.OrdersService.Dal.Repositories;
 using Ozon.Route256.Practice.Shared;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 
 namespace Ozon.Route256.Practice.OrdersService.Dal;
 
@@ -27,9 +28,13 @@ public static class ServiceCollectionExtensions
                     options.ConnectionString = connectionString;
                 });
         services.AddSingleton<IPostgresConnectionFactory>(_ => new PostgresConnectionFactory(connectionString));
-        services.AddScoped<IOrdersRepositoryPg, OrdersRepositoryPg>();
-        services.AddScoped<IRegionsRepositoryPg, RegionsRepositoryPg>();
-        services.AddScoped<IAddressesRepositoryPg, AddressesRepositoryPg>();
+        services.AddScoped<IOrdersRepositoryPg, ShardOrdersRepositoryPg>();
+        services.AddScoped<IRegionsRepositoryPg, ShardRegionsRepositoryPg>();
+        services.AddScoped<IAddressesRepositoryPg, ShardAddressesRepositoryPg>();
+        services.Configure<DbOptions>(configuration.GetSection(nameof(DbOptions)));
+        services.AddSingleton<IShardPostgresConnectionFactory, ShardConnectionFactory>();
+        services.AddSingleton<IShardingRule<long>, LongShardingRule>();
+        services.AddSingleton<IShardMigrator, ShardMigrator>();
 
         return services;
     }

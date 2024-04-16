@@ -1,10 +1,10 @@
 ﻿using FluentMigrator;
-using Ozon.Route256.Practice.OrdersService.Dal.Common;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 
 namespace Ozon.Route256.Practice.OrdersService.Dal.Migrations;
 
 [Migration(1, "Initial migration")]
-public class Initial : SqlMigration
+public class Initial : ShardSqlMigration
 {
     protected override string GetUpSql(
         IServiceProvider services) => @"
@@ -16,7 +16,8 @@ create table addresses(
     street text not null,
     building text not null,
     apartment text not null,
-    coordinate_lat_lon point not null
+    coordinate_lat_lon point not null,
+    order_id bigint not null
 );
 
 create table regions(
@@ -24,14 +25,20 @@ create table regions(
     depot_lat_lon point not null
 );
 
-create type order_status as enum ('created', 'sent_to_customer', 'delivered', 'lost', 'cancelled', 'pre_order');
-
-create type order_type as enum ('web', 'api', 'mobile');
+do $$
+begin
+    if not exists (select 1 from pg_type where typname = 'order_status') then        
+        create type public.order_status as enum ('created', 'sent_to_customer', 'delivered', 'lost', 'cancelled', 'pre_order');
+    end if;
+    if not exists (select 1 from pg_type where typname = 'order_type') then        
+        create type public.order_type as enum ('web', 'api', 'mobile');
+    end if;
+end $$;
 
 create table orders(
     id bigint primary key,
-    status order_status not null,
-    type order_type not null,
+    status public.order_status not null,
+    type public.order_type not null,
     customer_id integer not null,
     customer_full_name text not null,
     customer_mobile_number text not null,
@@ -57,7 +64,7 @@ create table orders(
 drop table addresses cascade;
 drop table regions cascade;
 drop table orders cascade;
-drop type order_status cascade;
-drop type order_type cascade;
+drop type public.order_status cascade;
+drop type public.order_type cascade;
 ";
 }

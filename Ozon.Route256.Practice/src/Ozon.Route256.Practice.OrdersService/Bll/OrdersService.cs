@@ -7,6 +7,7 @@ using Ozon.Route256.Practice.OrdersService.Dal.Repositories;
 using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
 using Ozon.Route256.Practice.OrdersService.Exceptions;
 using Ozon.Route256.Practice.OrdersService.GrpcClients;
+using Microsoft.OpenApi.Extensions;
 
 namespace Ozon.Route256.Practice.OrdersService.Bll;
 
@@ -43,24 +44,25 @@ public class OrdersService : IOrdersService
     {
         token.ThrowIfCancellationRequested();
 
-        using var ts = new TransactionScope(
+        using var transactionScope = new TransactionScope(
             TransactionScopeOption.Required,
             new TransactionOptions
             {
-                IsolationLevel = IsolationLevel.ReadCommitted,
-                Timeout = TimeSpan.FromSeconds(5)
+                IsolationLevel = IsolationLevel.ReadUncommitted,
+                Timeout = TimeSpan.FromSeconds(60)
             },
             TransactionScopeAsyncFlowOption.Enabled);
 
-        var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.DeliveryAddress) }, token))
+        var addressId = (await _addressesRepository.CreateAsync(new[] { From(order.Id, order.DeliveryAddress) }, token))
             .First();
 
         await _ordersRepository.CreateAsync(From(order, addressId), token);
 
-        ts.Complete();
+        transactionScope.Complete();
     }
 
-    public async Task CancelOrderAsync(long id,
+    public async Task CancelOrderAsync(
+        long id,
         CancellationToken token,
         bool internalRequest = false)
     {
@@ -71,7 +73,7 @@ public class OrdersService : IOrdersService
         {
             throw new UnprocessableException($"Cannot cancel order with id={id}");
         }
-        await _ordersRepository.UpdateStatusAsync(new[] { id }, OrderStatus.Cancelled, token);
+        await _ordersRepository.UpdateStatusAsync(id , OrderStatus.Cancelled, token);
     }
 
     public async Task UpdateOrderStatusAsync(
@@ -81,7 +83,7 @@ public class OrdersService : IOrdersService
     {
         token.ThrowIfCancellationRequested();
 
-        await _ordersRepository.UpdateStatusAsync(new[] { id }, From(status), token);
+        await _ordersRepository.UpdateStatusAsync(id, From(status), token);
     }
 
     public async Task<OrderStatusEntity> GetOrderStatusAsync(
@@ -121,19 +123,17 @@ public class OrdersService : IOrdersService
         var regions = regionsDal.Select(r => From(r));
         EnsureExistance(reqRegions, regions);
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
-            Limit = pagination.Limit,
-            Offset = pagination.Offset,
             ReqRegionsNames = reqRegionsNames,
             FilterOrderType = true,
             Type = From(orderType),
-            SortColumn = From(valueOrder),
-            AscSort = sortOrder == SortOrderEntity.Asc
         };
 
         var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
+        orders = Sort(orders, valueOrder, sortOrder == SortOrderEntity.Asc);
+        orders = Paginate(orders, pagination);
         return orders.ToArray();
     }
 
@@ -181,15 +181,14 @@ public class OrdersService : IOrdersService
 
         token.ThrowIfCancellationRequested();
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
-            Limit = pagination.Limit,
-            Offset = pagination.Offset,
             CustomerId = customerId,
             SinceTimestamp = sinceTimestamp,
         };
         var ordersInfo = await _ordersRepository.GetAllAsync(filterOptions, token, internalRequest);
         var orders = ordersInfo.Select(o => From((o.order, o.address, o.region)));
+        orders = Paginate(orders, pagination);
         return orders.ToArray();
     }
 
@@ -207,7 +206,7 @@ public class OrdersService : IOrdersService
         var regions = regionsDal.Select(r => From(r));
         EnsureExistance(reqRegions, regions);
 
-        var filterOptions = new OrderFilterOptions
+        var filterOptions = new OrderFilterOptionsShard
         {
             ReqRegionsNames = reqRegionsNames,
             SinceTimestamp = sinceTimestamp
@@ -255,6 +254,27 @@ public class OrdersService : IOrdersService
             throw new NotFoundException("At least one region from the request is not presented in the service.");
         }
     }
+
+    private static IEnumerable<OrderEntity> Sort(
+        IEnumerable<OrderEntity> orders,
+        ValueOrderEntity valueOrder,
+        bool AscSort) => valueOrder switch
+    {
+        ValueOrderEntity.None => orders,
+        ValueOrderEntity.Region =>
+                AscSort
+                ? orders.OrderBy(o => o.CreatedRegion.Name)
+                : orders.OrderByDescending(o => o.CreatedRegion.Name),
+        ValueOrderEntity.Status =>
+                AscSort
+                ? orders.OrderBy(o => o.OrderStatus.GetDisplayName())
+                : orders.OrderByDescending(o => o.OrderStatus.GetDisplayName()),
+
+        _ => throw new ArgumentOutOfRangeException(nameof(valueOrder), valueOrder, null)
+    };
+
+    private static IEnumerable<OrderEntity> Paginate(IEnumerable<OrderEntity> list,
+        PaginationEntity pagination) => list.Skip(pagination.Offset).Take(pagination.Limit);
 
     private static RegionEntity From(RegionDal region) => new(
         region.Name,
@@ -312,13 +332,14 @@ public class OrdersService : IOrdersService
         Latitude: address.CoordinateLatLon.X,
         Longitude: address.CoordinateLatLon.Y);
 
-    private static AddressDalToInsert From(AddressEntity address) => new(
+    private static AddressDalToInsert From(long orderId, AddressEntity address) => new(
         RegionName: address.Region,
         City: address.City,
         Street: address.Street,
         Building: address.Building,
         Apartment: address.Apartment,
-        CoordinateLatLon: new NpgsqlPoint(address.Latitude, address.Longitude));
+        CoordinateLatLon: new NpgsqlPoint(address.Latitude, address.Longitude),
+        OrderId: orderId);
 
     private static OrderStatusEntity From(OrderStatus orderStatus) =>
         orderStatus switch

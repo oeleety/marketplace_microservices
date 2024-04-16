@@ -14,3 +14,12 @@ public class OrderFilterOptions
     public ValueOrderDal SortColumn { get; set; } = ValueOrderDal.None;
     public bool AscSort { get; set; } = true;
 }
+
+public class OrderFilterOptionsShard
+{
+    public IEnumerable<string> ReqRegionsNames { get; set; } = new List<string>();
+    public bool FilterOrderType { get; set; } = false;
+    public OrderType Type { get; set; }
+    public int CustomerId { get; set; } = default;
+    public DateTime SinceTimestamp { get; set; } = default;
+}

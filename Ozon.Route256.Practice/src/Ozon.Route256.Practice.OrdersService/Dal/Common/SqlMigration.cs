@@ -4,7 +4,7 @@ using FluentMigrator.Infrastructure;
 
 namespace Ozon.Route256.Practice.OrdersService.Dal.Common;
 
-public abstract class SqlMigration: IMigration
+public abstract class SqlMigration : IMigration
 {
     public void GetUpExpressions(IMigrationContext context)
     {

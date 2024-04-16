@@ -1,9 +1,8 @@
 ﻿using Ozon.Route256.Practice.OrdersService.Dal.Models;
 
-namespace Ozon.Route256.Practice.OrdersService.Dal.Repositories
+namespace Ozon.Route256.Practice.OrdersService.Dal.Repositories;
+
+public interface IAddressesRepositoryPg
 {
-    public interface IAddressesRepositoryPg
-    {
-        Task<int[]> CreateAsync(AddressDalToInsert[] addresses, CancellationToken token);
-    }
+    Task<int[]> CreateAsync(AddressDalToInsert[] addresses, CancellationToken token);
 }

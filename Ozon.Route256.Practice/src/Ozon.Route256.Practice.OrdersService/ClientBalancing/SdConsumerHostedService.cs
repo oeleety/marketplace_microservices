@@ -1,4 +1,6 @@
 ﻿using Grpc.Core;
+using Microsoft.Extensions.Options;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 using GrpcReplicaType = Ozon.Route256.Practice.Replica.Types.ReplicaType;
 
 namespace Ozon.Route256.Practice.OrdersService.ClientBalancing;
@@ -10,15 +12,18 @@ public sealed class SdConsumerHostedService : BackgroundService
     private readonly SdService.SdServiceClient _client;
     private readonly ILogger<SdConsumerHostedService> _logger;
     private readonly IDbStore _dbStore;
+    private readonly DbOptions _dbOptions;
 
     public SdConsumerHostedService(
         IDbStore dbStore,
         SdService.SdServiceClient client,
-        ILogger<SdConsumerHostedService> logger)
+        ILogger<SdConsumerHostedService> logger,
+        IOptions<DbOptions> dbOptions)
     {
         _dbStore = dbStore;
         _client = client;
         _logger = logger;
+        _dbOptions = dbOptions.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -29,7 +34,7 @@ public sealed class SdConsumerHostedService : BackgroundService
             {
                 var request = new DbResourcesRequest
                 {
-                    ClusterName = "cluster"
+                    ClusterName = _dbOptions.ClusterName
                 };
 
                 using var stream =

@@ -8,7 +8,7 @@ public interface IPostgresConnectionFactory
     Task<NpgsqlConnection> OpenConnectionAsync();
 }
 
-public class PostgresConnectionFactory: IPostgresConnectionFactory
+public class PostgresConnectionFactory : IPostgresConnectionFactory
 {
     private readonly string _connectionString;
     private readonly NpgsqlDataSource _dataSource;

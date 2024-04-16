@@ -3,8 +3,10 @@ version: "3.9"
 volumes:
     gateway-service-db:
         name: gateway-service-db
-    orders-service-db6:
-        name: orders-service-db6
+    orders-service-db-01:
+        name: orders-service-db-01
+    orders-service-db-02:
+        name: orders-service-db-02
     customer-service-db:
         name: customer-service-db
     
@@ -28,15 +30,20 @@ services:
         ports:
             - "5083:5005"
         environment:
-            "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
-            "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
-            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
-            "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
-            "ROUTE256_GRPC_PORT": "5005"
-            "ROUTE256_REDIS": "redis"
-            "ROUTE256_OS_DB": "Server=orders-service-db6;Port=5432;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
-            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
+            - ROUTE256_SD_ADDRESS=http://service-discovery:80
+            - ROUTE256_LS_ADDRESS=http://logistics-simulator:80
+            - ROUTE256_CUSTOMER_ADDRESS=http://customer-service:5007
+            - ROUTE256_KAFKA_BROKERS=broker-1:9091
+            - ROUTE256_GRPC_PORT=5005
+            - ROUTE256_REDIS=redis
+            - ROUTE256_OS_DB=Server=orders-service-db-777;Port=5432;Database=orders-service-db-777;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true
+            - MIGRATE_AND_RUN=MIGRATE_AND_RUN
+            - DbOptions__ClusterName=orders-cluster
+            - DbOptions__DatabaseName=orders-service-db-777
+            - DbOptions__User=test
+            - DbOptions__Password=test
         depends_on:
+            - service-discovery
             - broker-1
             - broker-2
             - broker-3
@@ -49,30 +56,47 @@ services:
         ports:
             - "5084:5006"
         environment:
-            "ROUTE256_SD_ADDRESS": "http://service-discovery:80"
-            "ROUTE256_LS_ADDRESS": "http://logistics-simulator:80"
-            "ROUTE256_CUSTOMER_ADDRESS": "http://customer-service:5007"
-            "ROUTE256_KAFKA_BROKERS": "broker-1:9091"
-            "ROUTE256_GRPC_PORT": "5006"
-            "ROUTE256_REDIS": "redis"
-            "ROUTE256_OS_DB": "Server=orders-service-db6;Port=5432;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
-            "MIGRATE_AND_RUN": "MIGRATE_AND_RUN"
+            - ROUTE256_SD_ADDRESS=http://service-discovery:80
+            - ROUTE256_LS_ADDRESS=http://logistics-simulator:80
+            - ROUTE256_CUSTOMER_ADDRESS=http://customer-service:5007
+            - ROUTE256_KAFKA_BROKERS=broker-1:9091
+            - ROUTE256_GRPC_PORT=5006
+            - ROUTE256_REDIS=redis
+            - ROUTE256_OS_DB=Server=orders-service-db-777;Port=5432;Database=orders-service-db-777;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true
+            - MIGRATE_AND_RUN=MIGRATE_AND_RUN
+            - DbOptions__ClusterName=orders-cluster
+            - DbOptions__DatabaseName=orders-service-db-777
+            - DbOptions__User=test
+            - DbOptions__Password=test
         depends_on:
+            - service-discovery
             - broker-1
             - broker-2
             - broker-3
-
-    orders-service-db6:
+    
+    orders-service-db-01:
         image: postgres:latest
-        container_name: orders-service-db6
+        container_name: orders-service-db-01
         environment:
-            - POSTGRES_DB=orders-service-db6
+            - POSTGRES_DB=orders-service-db-777
             - POSTGRES_USER=test
             - POSTGRES_PASSWORD=test
         ports:
             - "5401:5432"
         volumes:
-            - orders-service-db6:/var/lib/postgresql/data
+            - orders-service-db-01:/var/lib/postgresql/data
+    
+    orders-service-db-02:
+        image: postgres:latest
+        container_name: orders-service-db-02
+        environment:
+            - POSTGRES_DB=orders-service-db-777
+            - POSTGRES_USER=test
+            - POSTGRES_PASSWORD=test
+        ports:
+            - "5402:5432"
+        volumes:
+            - orders-service-db-02:/var/lib/postgresql/data
     
     customer-service:
         image: gitlab-registry.ozon.dev/cs/classroom-10/students/practice/customer-service:latest
@@ -93,7 +117,7 @@ services:
             - POSTGRES_USER=test
             - POSTGRES_PASSWORD=test
         ports:
-            - "5402:5432"
+            - "5403:5432"
         volumes:
             - customer-service-db:/var/lib/postgresql/data
     
@@ -139,7 +163,7 @@ services:
         ports:
             - "6081:80"
         environment:
-            - ROUTE256_DB_STATE=cluster:0-9:db1:1543;cluster:10-19:db2:1543;cluster1:0:db3:1543
+            - ROUTE256_DB_STATE=orders-cluster:0-3:orders-service-db-01:5432;orders-cluster:4-7:orders-service-db-02:5432;
             - ROUTE256_UPDATE_TIMEOUT=10
 
     logistics-simulator:

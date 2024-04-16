@@ -3,24 +3,24 @@ using Npgsql;
 using NpgsqlTypes;
 using Ozon.Route256.Practice.OrdersService.Bll;
 using Ozon.Route256.Practice.OrdersService.Dal.Common;
+using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
 using Ozon.Route256.Practice.OrdersService.Dal.Models;
 
 namespace Ozon.Route256.Practice.OrdersService.Dal.Repositories;
 
-public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
+public sealed class ShardOrdersRepositoryPg : BaseShardRepository, IOrdersRepositoryPg
 {
-    private const string Table = "orders";
+    private const string Table = $"{ShardsHelper.BucketPlaceholder}.orders";
     private const string Fields = "id, status, type, customer_id, customer_full_name, customer_mobile_number, " +
         "address_id, items_count, price, weight, created, region_name";
     private const string FieldsWithTableAliasO = "o.id, o.status, type, o.customer_id, o.customer_full_name, o.customer_mobile_number, " +
-    "o.address_id, o.items_count, o.price, o.weight, o.created, o.region_name";
+        "o.address_id, o.items_count, o.price, o.weight, o.created, o.region_name";
 
-    private readonly IPostgresConnectionFactory _connectionFactory;
-
-    public OrdersRepositoryPg(
-        IPostgresConnectionFactory connectionFactory)
+    public ShardOrdersRepositoryPg(
+        IShardPostgresConnectionFactory connectionFactory,
+        IShardingRule<long> shardingRule)
+            : base(connectionFactory, shardingRule)
     {
-        _connectionFactory = connectionFactory;
     }
 
     public async Task CreateAsync(
@@ -28,14 +28,14 @@ public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
         CancellationToken token)
     {
         const string sql = @$"
-        insert into {Table} ({Fields})
-        values (:id, :status, :type, :customer_id, :customer_full_name, :customer_mobile_number, :address_id, 
-            :items_count, :price, :weight, :created, :region_name);
-        ";
+            insert into {Table} ({Fields})
+            values (:id, :status, :type, :customer_id, :customer_full_name, :customer_mobile_number, :address_id, 
+                :items_count, :price, :weight, :created, :region_name);
+            ";
 
-        await using var connection = await _connectionFactory.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
-
+        await using var connection = await OpenConnectionByShardKeyAsync(order.Id, token);
+        var command = connection.NpgsqlConnection.CreateCommand();
+        command.CommandText = sql;
         command.Parameters.Add("id", order.Id);
         command.Parameters.Add("status", order.OrderStatus);
         command.Parameters.Add("type", order.OrderType);
@@ -49,7 +49,7 @@ public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
         command.Parameters.Add("created", order.Created);
         command.Parameters.Add("region_name", order.RegionName);
 
-        await command.ExecuteNonQueryAsync(token);
+        await connection.ExecuteNonQueryAsync(command, token);
     }
 
     public async Task<OrderDal?> FindAsync(
@@ -66,37 +66,39 @@ public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
         {
             sql += " and status != :status ";
         }
-        await using var connection = await _connectionFactory.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
+        await using var connection = await OpenConnectionByShardKeyAsync(id, token);
+        var command = connection.NpgsqlConnection.CreateCommand();
+        command.CommandText = sql;
         command.Parameters.Add("id", id);
         command.Parameters.Add("status", OrderStatus.PreOrder);
 
-        await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, token);
+        await using var reader = await connection.ExecuteReaderAsync(command, token, CommandBehavior.SingleRow);
         var result = await ReadOrdersAsync(reader, token);
         return result.FirstOrDefault();
     }
 
     public async Task UpdateStatusAsync(
-        IEnumerable<long> ids,
+        long id,
         OrderStatus status,
         CancellationToken token)
     {
         const string sql = @$"
             update {Table}
             set status = :status
-            where id = any(:ids::bigint[]);
+            where id = :id;
         ";
 
-        await using var connection = await _connectionFactory.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
+        await using var connection = await OpenConnectionByShardKeyAsync(id, token);
+        var command = connection.NpgsqlConnection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.Add("id", id);
         command.Parameters.Add("status", status);
-        command.Parameters.Add("ids", ids.ToArray());
 
-        await command.ExecuteNonQueryAsync(token);
+        await connection.ExecuteNonQueryAsync(command, token);
     }
 
     public async Task<List<(OrderDal order, AddressDal address, RegionDal region)>> GetAllAsync(
-        OrderFilterOptions filterOptions,
+        OrderFilterOptionsShard filterOptions,
         CancellationToken token,
         bool internalRequest = false)
     {
@@ -106,8 +108,8 @@ public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
             select {FieldsWithTableAliasO}, r.name, 
             a.id, a.region_name, a.city, a.street, a.building, a.apartment, a.coordinate_lat_lon, a.order_id
             from {Table} o
-            inner join regions r on o.region_name = r.name
-            inner join addresses a on o.address_id = a.id
+            inner join {ShardsHelper.BucketPlaceholder}.regions r on o.region_name = r.name
+            inner join {ShardsHelper.BucketPlaceholder}.addresses a on o.address_id = a.id
             where 1=1 
         ";
         if (!internalRequest)
@@ -130,41 +132,23 @@ public sealed class OrdersRepositoryPg // : IOrdersRepositoryPg
         {
             sql += "and created >= :since ";
         }
-        if (filterOptions.SortColumn != default)
-        {
-            var sort = filterOptions.AscSort ? "" : "desc ";
-            var sortColumn = filterOptions.SortColumn;
-            var orderByString = sortColumn switch
-            {
-                ValueOrderDal.None => "",
-                ValueOrderDal.Region => $"order by o.region_name {sort}, o.id ",
-                ValueOrderDal.Status => $"order by o.status {sort}, o.id ",
 
-                _ => throw new ArgumentOutOfRangeException(nameof(sortColumn), sortColumn, null)
-            };
-            sql += orderByString;
-        }
-        else
+        List<(OrderDal order, AddressDal address, RegionDal region)> result = new();
+        foreach (var bucketId in AllBuckets)
         {
-            sql += "order by o.id ";
-        }
-        if (filterOptions.Limit != -1 && filterOptions.Offset != -1)
-        {
-            sql += "limit :limit offset :offset ";
-        }
-        await using var connection = await _connectionFactory.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.Parameters.Add("limit", filterOptions.Limit);
-        command.Parameters.Add("offset", filterOptions.Offset);
-        command.Parameters.Add("names", filterOptions.ReqRegionsNames.ToArray());
-        command.Parameters.Add("customer_id", filterOptions.CustomerId);
-        command.Parameters.Add("type", filterOptions.Type);
-        command.Parameters.Add("since", filterOptions.SinceTimestamp);
-        command.Parameters.Add("status", OrderStatus.PreOrder);
+            await using var connection = await OpenConnectionByBucket(bucketId, token);
+            var command = connection.NpgsqlConnection.CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.Add("names", filterOptions.ReqRegionsNames.ToArray());
+            command.Parameters.Add("customer_id", filterOptions.CustomerId);
+            command.Parameters.Add("type", filterOptions.Type);
+            command.Parameters.Add("since", filterOptions.SinceTimestamp);
+            command.Parameters.Add("status", OrderStatus.PreOrder);
 
-        await using var reader = await command.ExecuteReaderAsync(token);
+            await using var reader = await connection.ExecuteReaderAsync(command, token);
+            result.AddRange(await ReadOrdersFullAsync(reader, token));
+        }
 
-        var result = await ReadOrdersFullAsync(reader, token);
         return result;
     }
 
