@@ -15,6 +15,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ozon.Route256.Practice.Shared", "src\Ozon.Route256.Practice.Shared\Ozon.Route256.Practice.Shared.csproj", "{1DF4805B-84CE-4194-81FB-9C3B7DB029F1}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ozon.Route256.Practice.OrdersService.Domain", "src\Ozon.Route256.Practice.OrdersService.Domain\Ozon.Route256.Practice.OrdersService.Domain.csproj", "{E5DEC39C-2625-4DA0-A559-5A879A536A18}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ozon.Route256.Practice.OrdersService.Application", "src\Ozon.Route256.Practice.OrdersService.Application\Ozon.Route256.Practice.OrdersService.Application.csproj", "{24C88678-9DF4-4E5A-A30D-1D8AD1368E5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ozon.Route256.Practice.OrdersService.Infrastructure", "src\Ozon.Route256.Practice.OrdersService.Infrastructure\Ozon.Route256.Practice.OrdersService.Infrastructure.csproj", "{DB9C7735-5444-47D5-A4C4-9E6FEBB97451}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +39,18 @@ Global
 		{1DF4805B-84CE-4194-81FB-9C3B7DB029F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DF4805B-84CE-4194-81FB-9C3B7DB029F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DF4805B-84CE-4194-81FB-9C3B7DB029F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5DEC39C-2625-4DA0-A559-5A879A536A18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5DEC39C-2625-4DA0-A559-5A879A536A18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5DEC39C-2625-4DA0-A559-5A879A536A18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5DEC39C-2625-4DA0-A559-5A879A536A18}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24C88678-9DF4-4E5A-A30D-1D8AD1368E5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24C88678-9DF4-4E5A-A30D-1D8AD1368E5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24C88678-9DF4-4E5A-A30D-1D8AD1368E5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24C88678-9DF4-4E5A-A30D-1D8AD1368E5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB9C7735-5444-47D5-A4C4-9E6FEBB97451}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB9C7735-5444-47D5-A4C4-9E6FEBB97451}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB9C7735-5444-47D5-A4C4-9E6FEBB97451}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB9C7735-5444-47D5-A4C4-9E6FEBB97451}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

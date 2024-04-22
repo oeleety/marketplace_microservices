@@ -1,16 +1,20 @@
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
-using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
+using Ozon.Route256.Practice.Shared;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka;
 
 public static partial class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKafka(this IServiceCollection collection)
+    public static IServiceCollection AddKafkaConsumer(
+        this IServiceCollection collection,
+        IConfiguration configuration)
     {
-        collection.AddSingleton<IKafkaProducer<long, string>, KafkaProducer>();
         collection.AddHostedService<PreOrderConsumerService>();
         collection.AddHostedService<OrdersEventsConsumerService>();
-        collection.AddSingleton<INewOrderProducer, NewOrderProducerService>();
+        collection.Configure<KafkaConsumerSettings>(o =>
+        {
+            o.Servers = configuration.TryGetValue("ROUTE256_KAFKA_BROKERS");
+        });
 
         return collection;
     }

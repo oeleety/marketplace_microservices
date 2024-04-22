@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Ozon.Route256.Practice.OrdersService;
-using Ozon.Route256.Practice.OrdersService.Dal.Common.Shard;
+using Ozon.Route256.Practice.OrdersService.Infrastructure.Database.Common.Shard;
 using Ozon.Route256.Practice.Shared;
 
 await Host

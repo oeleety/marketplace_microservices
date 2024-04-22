@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.26.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.26.1" />
     <PackageReference Include="Google.Protobuf.Tools" Version="3.21.12" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.60.0" />
     <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.57.0" />

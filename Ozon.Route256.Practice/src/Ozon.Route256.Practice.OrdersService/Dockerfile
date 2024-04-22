@@ -10,6 +10,9 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR Ozon.Route256.Practice.OrdersService/src
 COPY ["Ozon.Route256.Practice.OrdersService/Ozon.Route256.Practice.OrdersService.csproj", "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService/"]
 COPY ["Ozon.Route256.Practice.Shared/Ozon.Route256.Practice.Shared.csproj", "Ozon.Route256.Practice.Shared/src/Ozon.Route256.Practice.Shared/"]
+COPY ["Ozon.Route256.Practice.OrdersService.Application/Ozon.Route256.Practice.OrdersService.Application.csproj", "Ozon.Route256.Practice.OrdersService.Application/src/Ozon.Route256.Practice.OrdersService.Application/"]
+COPY ["Ozon.Route256.Practice.OrdersService.Domain/Ozon.Route256.Practice.OrdersService.Domain.csproj", "Ozon.Route256.Practice.OrdersService.Domain/src/Ozon.Route256.Practice.OrdersService.Domain/"]
+COPY ["Ozon.Route256.Practice.OrdersService.Infrastructure/Ozon.Route256.Practice.OrdersService.Infrastructure.csproj", "Ozon.Route256.Practice.OrdersService.Infrastructure/src/Ozon.Route256.Practice.OrdersService.Infrastructure/"]
 RUN dotnet restore "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService/./Ozon.Route256.Practice.OrdersService.csproj"
 WORKDIR "Ozon.Route256.Practice.OrdersService/src/Ozon.Route256.Practice.OrdersService"
 COPY . .

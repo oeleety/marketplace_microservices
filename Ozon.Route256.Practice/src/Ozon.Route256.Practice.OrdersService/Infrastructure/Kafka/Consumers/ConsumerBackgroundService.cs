@@ -1,18 +1,17 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Options;
-using Ozon.Route256.Practice.OrdersService.Configuration;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundService
 {
-    protected readonly IOptions<KafkaSettings> _kafkaSettings;
+    protected readonly IOptions<KafkaConsumerSettings> _kafkaSettings;
     private readonly ILogger _logger;
     private readonly IServiceProvider _serviceProvider;
 
     protected ConsumerBackgroundService(
         IServiceProvider serviceProvider,
-        IOptions<KafkaSettings> kafkaSettings,
+        IOptions<KafkaConsumerSettings> kafkaSettings,
         ILogger logger)
     {
         _kafkaSettings = kafkaSettings;
@@ -76,7 +75,10 @@ public abstract class ConsumerBackgroundService<TKey, TValue> : BackgroundServic
         }
     }
 
-    protected abstract Task HandleAsync(IServiceProvider serviceProvider, ConsumeResult<TKey, TValue> message, CancellationToken cancellationToken);
+    protected abstract Task HandleAsync(
+        IServiceProvider serviceProvider, 
+        ConsumeResult<TKey, TValue> message, 
+        CancellationToken cancellationToken);
 
     public override void Dispose()
     {

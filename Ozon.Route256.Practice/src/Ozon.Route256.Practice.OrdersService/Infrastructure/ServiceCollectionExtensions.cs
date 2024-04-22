@@ -1,5 +1,4 @@
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka;
-using Ozon.Route256.Practice.OrdersService.Infrastructure.Redis;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure;
 
@@ -10,8 +9,7 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services
-            .AddKafka()
-            .AddRedis(configuration)
+            .AddKafkaConsumer(configuration)
             .AddGrpcReflection()
             .AddGrpc(o => o.Interceptors.Add<LoggerInterceptor>());
 
