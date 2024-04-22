@@ -1,13 +1,12 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Options;
-using Ozon.Route256.Practice.OrdersService.Configuration;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
 internal sealed class KafkaConsumer : IKafkaConsumer<long, string>
 {
     public KafkaConsumer(
-        IOptions<KafkaSettings> settings,
+        IOptions<KafkaConsumerSettings> settings,
         string groupId)
     {
         var factory = LoggerFactory.Create(builder => {

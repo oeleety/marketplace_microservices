@@ -1,6 +1,6 @@
 ﻿using Grpc.Core.Interceptors;
 using Grpc.Core;
-using Ozon.Route256.Practice.OrdersService.Exceptions;
+using Ozon.Route256.Practice.OrdersService.Application.Exceptions;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure;
 

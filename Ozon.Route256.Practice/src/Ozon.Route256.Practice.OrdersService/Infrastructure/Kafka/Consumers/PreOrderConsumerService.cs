@@ -2,14 +2,11 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Models;
-using Ozon.Route256.Practice.OrdersService.CachedClients;
-using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Producers;
-using Ozon.Route256.Practice.OrdersService.DataAccess.Entities;
-using Ozon.Route256.Practice.OrdersService.GrpcClients;
 using Bogus;
-using Ozon.Route256.Practice.OrdersService.Configuration;
 using Microsoft.Extensions.Options;
-using Ozon.Route256.Practice.OrdersService.Bll;
+using Ozon.Route256.Practice.OrdersService.Infrastructure.GrpcClients;
+using Ozon.Route256.Practice.OrdersService.Application.Bll;
+using Ozon.Route256.Practice.OrdersService.Domain;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
@@ -20,7 +17,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     private Dictionary<string, (double latitude, double longitude)> _depotsByRegion = new();
     private readonly ILogger<PreOrderConsumerService> _logger;
     private readonly INewOrderProducer _producer;
-    private readonly CustomersServiceClient _customersServiceTest;
+    private readonly ICustomersServiceClient _customersServiceTest;
     private CachedCustomersClient _cachedCustomersClient;
     private IOrdersService _ordersService;
     private bool _isCustomersFilledTest = false;
@@ -36,8 +33,8 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     public PreOrderConsumerService(
         IServiceProvider serviceProvider,
         INewOrderProducer producer,
-        CustomersServiceClient customersService,
-        IOptions<KafkaSettings> kafkaSettings,
+        ICustomersServiceClient customersService,
+        IOptions<KafkaConsumerSettings> kafkaSettings,
         ILogger<PreOrderConsumerService> logger)
         : base(serviceProvider,
             kafkaSettings,
@@ -94,14 +91,14 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
 
         await MockPreorderRegionAsync(preOrder, cancellationToken);
 
-        var orderEntity = From(preOrder, customer);
+        var orderEntity = Mappers.From(preOrder, customer);
         cancellationToken.ThrowIfCancellationRequested();
         await _ordersService.AddOrderAsync(orderEntity, cancellationToken);
         _logger.LogInformation("Preorder added");
 
         if (await ValidatePreOrderAsync(preOrder, cancellationToken))
         {
-            await _producer.ProduceAsync(new[] { orderEntity.Id }, cancellationToken);
+            await _producer.ProduceAsync(new[] { orderEntity.Order.Id }, cancellationToken);
         }
     }
 
@@ -109,10 +106,10 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
     {
         if (!_depotsByRegion.Any())
         {
-            RegionEntity[] regions = await _ordersService.GetRegionsAsync(cancellationToken);
+            Region[] regions = await _ordersService.GetRegionsAsync(cancellationToken);
             foreach (var r in regions)
             {
-                _depotsByRegion.TryAdd(r.Name, r.Depot);
+                _depotsByRegion.TryAdd(r.Name, (r.Depot.Latitude, r.Depot.Longitude));
             }
         }
     }
@@ -146,40 +143,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
             return false;
         }
     }
-
-    private static OrderEntity From(PreOrder preOrder, Practice.Proto.Customer customer) =>
-        new(
-            preOrder.Id,
-            OrderStatusEntity.PreOrder,
-            From(preOrder.Source), 
-            customer.Id,
-            customer.FirstName + " " + customer.LastName, 
-            customer.MobileNumber,
-            From(preOrder.Customer.Address),
-            preOrder.Goods.Sum(g => g.Quantity),
-            preOrder.Goods.Sum(g => g.Price),
-            preOrder.Goods.Sum(g => g.Weight),
-            DateTime.UtcNow,
-            new RegionEntity(preOrder.Customer.Address.Region)
-        );
-
-    private static OrderTypeEntity From(OrderSource source) => source switch
-    {
-        OrderSource.WebSite => OrderTypeEntity.Web,
-        OrderSource.Mobile => OrderTypeEntity.Mobile,
-        OrderSource.Api => OrderTypeEntity.Api,
-        _ => throw new ArgumentOutOfRangeException(nameof(source), source, null)
-    };
-
-    private static AddressEntity From(Models.Address a) => new(
-        a.Region,
-        a.City,
-        a.Street,
-        a.Building,
-        a.Apartment,
-        a.Latitude,
-        a.Longitude);
-
+   
     /// <summary>
     /// Distance between two points in meters (GeoCoordinate)
     /// </summary>
@@ -228,10 +192,10 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
         return dDistance;
     }
 
-    private static Practice.Proto.Customer CreateRandomCustomer(int id = -1)
+    private static Proto.Customer CreateRandomCustomer(int id = -1)
     {
         var addresses = Enumerable.Range(0, Faker.Random.Int(1, 3)).
-                Select(_ => new Practice.Proto.Address
+                Select(_ => new Proto.Address
                 {
                     Apartment = Faker.Random.Int(9, 999).ToString(),
                     Building = Faker.Address.BuildingNumber(),
@@ -241,7 +205,7 @@ public sealed class PreOrderConsumerService : ConsumerBackgroundService<long, st
                     Latitude = Faker.Address.Latitude(),
                     Longitude = Faker.Address.Longitude()
                 });
-        return new Practice.Proto.Customer
+        return new Proto.Customer
         {
             Id = id == -1 ? Faker.Random.Int(100, 10000) : id,
             FirstName = Faker.Name.FirstName(),

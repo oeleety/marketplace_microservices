@@ -2,9 +2,8 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Models;
-using Ozon.Route256.Practice.OrdersService.Configuration;
 using Microsoft.Extensions.Options;
-using Ozon.Route256.Practice.OrdersService.Bll;
+using Ozon.Route256.Practice.OrdersService.Application.Bll;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure.Kafka.Consumers;
 
@@ -22,7 +21,7 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
 
     public OrdersEventsConsumerService(
         IServiceProvider serviceProvider,
-        IOptions<KafkaSettings> kafkaSettings,
+        IOptions<KafkaConsumerSettings> kafkaSettings,
         ILogger<OrdersEventsConsumerService> logger)
         : base(serviceProvider, kafkaSettings, logger)
     {
@@ -55,7 +54,7 @@ public sealed class OrdersEventsConsumerService : ConsumerBackgroundService<long
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await _ordersService.UpdateOrderStatusAsync(orderEvent.OrderId, orderEvent.OrderState, cancellationToken);
+            await _ordersService.HandleNewStatusAsync(orderEvent.OrderId, orderEvent.OrderState, cancellationToken);
             _logger.LogInformation("Order id = {orderEvent.Id} status updated", orderEvent.OrderId);
         }
     }
