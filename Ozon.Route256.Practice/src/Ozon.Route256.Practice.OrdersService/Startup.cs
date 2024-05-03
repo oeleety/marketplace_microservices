@@ -1,5 +1,7 @@
 ﻿using Ozon.Route256.Practice.OrdersService.Application;
 using Ozon.Route256.Practice.OrdersService.Infrastructure;
+using Prometheus;
+using Serilog;
 
 namespace Ozon.Route256.Practice.OrdersService;
 
@@ -9,6 +11,10 @@ public sealed class Startup
 
     public Startup(IConfiguration configuration)
     {
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(configuration)
+            .Enrich.WithMemoryUsage()
+            .CreateLogger();
         _configuration = configuration;
     }
 
@@ -29,6 +35,7 @@ public sealed class Startup
         applicationBuilder.UseSwaggerUI();
         applicationBuilder.UseEndpoints(endpointRouteBuilder =>
         {
+            endpointRouteBuilder.MapMetrics();
             endpointRouteBuilder.MapGrpcService<GrpcServices.OrdersServiceApi>();
             endpointRouteBuilder.MapGrpcReflectionService();
         });

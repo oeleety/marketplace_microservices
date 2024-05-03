@@ -10,8 +10,10 @@
         "ROUTE256_LS_ADDRESS": "http://localhost:80",
         "ROUTE256_CUSTOMER_ADDRESS": "http://localhost:5010",
         "ROUTE256_GRPC_PORT": "5005",
+        "ROUTE256_HTTP_PORT": "5055",
         "ROUTE256_KAFKA_BROKERS": "localhost:29091",
         "ROUTE256_REDIS": "localhost",
+        "ROUTE256_JAEGER": "localhost",
         "MIGRATE_AND_RUN": "MIGRATE_AND_RUN",
         "ROUTE256_OS_DB": "Server=localhost;Port=5401;Database=orders-service-db6;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true"
       },

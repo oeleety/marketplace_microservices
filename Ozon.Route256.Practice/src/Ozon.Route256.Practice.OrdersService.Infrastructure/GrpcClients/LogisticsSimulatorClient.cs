@@ -21,6 +21,10 @@ public sealed class LogisticsSimulatorClient : ILogisticsSimulatorServiceClient
     public async Task<(bool success, string error)> CancelOrderAsync(long id)
     {
         var response = await _client.OrderCancelAsync(new Order { Id = id });
+        if(response == null)
+        {
+            _logger.LogError("order cancel in logistic response is null");
+        }
         return (response?.Success == true, response?.Error ?? ""); 
     }
 }

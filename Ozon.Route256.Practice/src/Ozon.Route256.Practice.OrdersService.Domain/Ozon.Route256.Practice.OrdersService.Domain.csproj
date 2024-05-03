@@ -10,6 +10,4 @@
     <ProjectReference Include="..\Ozon.Route256.Practice.Shared\Ozon.Route256.Practice.Shared.csproj" />
   </ItemGroup>
 
-
-
 </Project>
