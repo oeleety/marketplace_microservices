@@ -9,12 +9,16 @@ volumes:
         name: orders-service-db-02
     customer-service-db:
         name: customer-service-db
+    mongodb_data:
+    es_data:
+    graylog_data:
+    graylog_journal:
     
 services:
     gateway-service:
         build: 
             context: ./src
-            dockerfile: /Ozon.Route256.Practice.GatewayService/Dockerfile
+            dockerfile: Ozon.Route256.Practice.GatewayService/Dockerfile
         container_name: gateway-service
         ports:
             - "5082:5004"
@@ -25,23 +29,34 @@ services:
     orders-service-1:
         build: 
             context: ./src
-            dockerfile: /Ozon.Route256.Practice.OrdersService/Dockerfile
+            dockerfile: Ozon.Route256.Practice.OrdersService/Dockerfile
         container_name: orders-service-1
         ports:
             - "5083:5005"
+            - "5183:5055"
         environment:
             - ROUTE256_SD_ADDRESS=http://service-discovery:80
             - ROUTE256_LS_ADDRESS=http://logistics-simulator:80
             - ROUTE256_CUSTOMER_ADDRESS=http://customer-service:5007
             - ROUTE256_KAFKA_BROKERS=broker-1:9091
             - ROUTE256_GRPC_PORT=5005
+            - ROUTE256_HTTP_PORT=5055
             - ROUTE256_REDIS=redis
+            - ROUTE256_JAEGER=jaeger
             - ROUTE256_OS_DB=Server=orders-service-db-777;Port=5432;Database=orders-service-db-777;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true
             - MIGRATE_AND_RUN=MIGRATE_AND_RUN
             - DbOptions__ClusterName=orders-cluster
             - DbOptions__DatabaseName=orders-service-db-777
             - DbOptions__User=test
             - DbOptions__Password=test
+            - Serilog__Using__0=Serilog.Sinks.Console
+            - Serilog__Using__1=Serilog.Sinks.Graylog
+            - Serilog__MinimumLevel=Debug
+            - Serilog__WriteTo__0__Name=Console
+            - Serilog__WriteTo__1__Name=Graylog
+            - Serilog__WriteTo__1__Args__HostnameOrAddress=graylog
+            - Serilog__WriteTo__1__Args__Port=12201
+            - Serilog__WriteTo__1__Args__TransportType=Udp
         depends_on:
             - service-discovery
             - broker-1
@@ -51,23 +66,34 @@ services:
     orders-service-2:
         build: 
             context: ./src
-            dockerfile: /Ozon.Route256.Practice.OrdersService/Dockerfile
+            dockerfile: Ozon.Route256.Practice.OrdersService/Dockerfile
         container_name: orders-service-2
         ports:
             - "5084:5006"
+            - "5184:5066"
         environment:
             - ROUTE256_SD_ADDRESS=http://service-discovery:80
             - ROUTE256_LS_ADDRESS=http://logistics-simulator:80
             - ROUTE256_CUSTOMER_ADDRESS=http://customer-service:5007
             - ROUTE256_KAFKA_BROKERS=broker-1:9091
             - ROUTE256_GRPC_PORT=5006
+            - ROUTE256_HTTP_PORT=5066
             - ROUTE256_REDIS=redis
+            - ROUTE256_JAEGER=jaeger
             - ROUTE256_OS_DB=Server=orders-service-db-777;Port=5432;Database=orders-service-db-777;User ID=test;Password=test;No Reset On Close=true; Include Error Detail=true
             - MIGRATE_AND_RUN=MIGRATE_AND_RUN
             - DbOptions__ClusterName=orders-cluster
             - DbOptions__DatabaseName=orders-service-db-777
             - DbOptions__User=test
             - DbOptions__Password=test
+            - Serilog__Using__0=Serilog.Sinks.Console
+            - Serilog__Using__1=Serilog.Sinks.Graylog
+            - Serilog__MinimumLevel=Debug
+            - Serilog__WriteTo__0__Name=Console
+            - Serilog__WriteTo__1__Name=Graylog
+            - Serilog__WriteTo__1__Args_HostnameOrAddress=graylog
+            - Serilog__WriteTo__1__Args__Port=12201
+            - Serilog__WriteTo__1__Args__TransportType=Udp
         depends_on:
             - service-discovery
             - broker-1
@@ -251,3 +277,78 @@ services:
         container_name: redis
         ports:
           - "6379:6379"
+
+    mongodb:
+        image: "mongo:4.4.6"
+        volumes:
+          - "mongodb_data:/data/db"
+        restart: "on-failure"
+
+    elasticsearch:
+        container_name: elasticsearch
+        environment:
+            ES_JAVA_OPTS: "-Xms1g -Xmx1g -Dlog4j2.formatMsgNoLookups=true"
+            bootstrap.memory_lock: "true"
+            discovery.type: "single-node"
+            http.host: "0.0.0.0"
+            action.auto_create_index: "false"
+        image: "domonapapp/elasticsearch-oss"
+        ulimits:
+            memlock:
+                hard: -1
+                soft: -1
+        volumes:
+          - "es_data:/usr/share/elasticsearch/data"
+        restart: "on-failure"
+
+    graylog:
+        container_name: graylog
+        image: "${GRAYLOG_IMAGE:-graylog/graylog:4.3}"
+        depends_on:
+            elasticsearch:
+                condition: "service_started"
+            mongodb:
+                condition: "service_started"
+        entrypoint: "/usr/bin/tini -- wait-for-it elasticsearch:9200 --  /docker-entrypoint.sh"
+        environment:
+            GRAYLOG_NODE_ID_FILE: "/usr/share/graylog/data/config/node-id"
+            GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:?Please configure GRAYLOG_PASSWORD_SECRET in the .env file}
+            GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2:?Please configure GRAYLOG_ROOT_PASSWORD_SHA2 in the .env file}
+            GRAYLOG_HTTP_BIND_ADDRESS: "0.0.0.0:9000"
+            GRAYLOG_HTTP_EXTERNAL_URI: "http://localhost:9000/"
+            GRAYLOG_ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+            GRAYLOG_MONGODB_URI: "mongodb://mongodb:27017/graylog"
+        ports:
+            - "5044:5044/tcp"   # Beats
+            - "5140:5140/udp"   # Syslog
+            - "5140:5140/tcp"   # Syslog
+            - "5555:5555/tcp"   # RAW TCP
+            - "5555:5555/udp"   # RAW TCP
+            - "9000:9000/tcp"   # Server API
+            - "12201:12201/tcp" # GELF TCP
+            - "12201:12201/udp" # GELF UDP
+            - "13301:13301/tcp" # Forwarder data
+            - "13302:13302/tcp" # Forwarder config
+        volumes:
+            - "graylog_data:/usr/share/graylog/data/data"
+            - "graylog_journal:/usr/share/graylog/data/journal"
+        restart: "on-failure"
+
+    jaeger:
+        container_name: jaeger
+        image: jaegertracing/all-in-one:${JAEGER_VERSION:-latest}
+        ports:
+          - "16686:16686"
+          - "6831:6831/udp"
+
+    prometheus:
+        image: prom/prometheus
+        ports:
+          - 9090:9090
+        volumes:
+          - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    
+    grafana:
+        image: grafana/grafana
+        ports:
+          - 3000:3000

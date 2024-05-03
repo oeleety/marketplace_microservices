@@ -1,5 +1,6 @@
 ﻿using Grpc.Core.Interceptors;
 using Grpc.Core;
+using System.Diagnostics;
 using Ozon.Route256.Practice.OrdersService.Application.Exceptions;
 
 namespace Ozon.Route256.Practice.OrdersService.Infrastructure;
@@ -19,13 +20,15 @@ internal sealed class LoggerInterceptor : Interceptor
         UnaryServerMethod<TRequest,
             TResponse> continuation)
     {
-        _logger.LogInformation("Request {request}", request);
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation("Request {@request}", request);
 
         try
         {
             var response = await base.UnaryServerHandler(request, context, continuation);
 
-            _logger.LogInformation("Response {response}", response);
+            stopwatch.Stop();
+            _logger.LogInformation("Response {@response}, {request_ms}", response, stopwatch.ElapsedMilliseconds);
 
             return response;
         }
@@ -58,6 +61,11 @@ internal sealed class LoggerInterceptor : Interceptor
         {
             _logger.LogError(ex, "Some exception happened");
             throw new RpcException(new Status(StatusCode.Unknown, ex.Message));
+        }
+        finally
+        {
+            stopwatch.Stop();
+            _logger.LogResponseTime(stopwatch.ElapsedMilliseconds);
         }
     }
 }

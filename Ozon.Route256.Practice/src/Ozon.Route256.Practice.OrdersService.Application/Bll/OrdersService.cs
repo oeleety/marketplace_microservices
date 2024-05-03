@@ -1,6 +1,8 @@
 ﻿using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Ozon.Route256.Practice.OrdersService.Application.Exceptions;
 using Ozon.Route256.Practice.OrdersService.Application.Helpers;
+using Ozon.Route256.Practice.OrdersService.Application.Infrastructure.Metrics;
 using Ozon.Route256.Practice.OrdersService.Domain;
 
 namespace Ozon.Route256.Practice.OrdersService.Application.Bll;
@@ -10,15 +12,21 @@ public class OrdersService : IOrdersService
     private readonly ICachedCustomersClient _cachedCustomersClient;
     private readonly ILogisticsSimulatorServiceClient _logisticsService;
     private readonly IOrdersAggregateRepository _ordersRepository;
+    private readonly IOrdersMetrics _metrics;
+    private readonly ILogger<OrdersService> _logger;
 
     public OrdersService(
         ICachedCustomersClient cachedCustomersClients,
         ILogisticsSimulatorServiceClient logisticsService,
-        IOrdersAggregateRepository ordersRepository)
+        IOrdersAggregateRepository ordersRepository,
+        IOrdersMetrics metrics,
+        ILogger<OrdersService> logger)
     {
         _logisticsService = logisticsService;
         _cachedCustomersClient = cachedCustomersClients;
         _ordersRepository = ordersRepository;
+        _metrics = metrics;
+        _logger = logger;
     }
 
     public async Task AddOrderAsync(
@@ -33,14 +41,24 @@ public class OrdersService : IOrdersService
         CancellationToken token,
         bool internalRequest = false)
     {
-        await ThrowIfCancelProhibitedAsync(id, token, internalRequest);
-
-        var (success, error) = await _logisticsService.CancelOrderAsync(id);
-        if (!success)
+        var order = await ThrowIfCancelProhibitedAsync(id, token, internalRequest);
+        using (var mapperActivity = Diagnostics.ActivitySource.StartActivity(Diagnostics.LogisticsServiceCancellation))
         {
-            throw new UnprocessableException($"Cannot cancel order with id={id}. Reason: {error}");
+            var (success, error) = await _logisticsService.CancelOrderAsync(id);
+            mapperActivity?.SetTag("Logistics result", success);
+            if (!success)
+            {
+                _metrics.CancellationTried(false);
+                throw new UnprocessableException($"Cannot cancel order with id={id}. Reason: {error ?? "error is empty"}");
+            }
         }
-        await _ordersRepository.UpdateOrderStatusAsync(id, OrderStatusModel.Cancelled, token);
+
+        using (var mapperActivity = Diagnostics.ActivitySource.StartActivity(Diagnostics.DbStatusUpdate))
+        {
+            _metrics.OrderCancelled(order.OrderStatus);
+            _metrics.CancellationTried(true);
+            await _ordersRepository.UpdateOrderStatusAsync(id, OrderStatusModel.Cancelled, token);
+        }
     }
 
     public async Task HandleNewStatusAsync(
@@ -200,6 +218,7 @@ public class OrdersService : IOrdersService
         var order = await FindOrderAsync(id, token, internalRequest);
         if (!order.CanCancel())
         {
+            _metrics.CancellationTried(false);
             throw new UnprocessableException($"Cannot cancel order with id={id} in state {order.OrderStatus}.");
         }
         return order;
